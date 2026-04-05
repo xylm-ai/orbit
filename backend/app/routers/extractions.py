@@ -11,6 +11,8 @@ from app.models.document import Document, DocumentStatus
 from app.models.extraction import StagedExtraction, ReviewStatus
 from app.models.event import EventType
 from app.services.events import append_event, VersionConflictError
+from app.models.portfolio import Portfolio
+from app.services.projections import rebuild_portfolio, rebuild_entity_allocation
 from app.schemas.extraction import (
     ExtractionReviewResponse, RowEditRequest, ConfirmResponse, RejectRequest
 )
@@ -150,6 +152,14 @@ async def confirm_extraction(
     extraction.reviewed_at = datetime.now(timezone.utc)
     doc.status = DocumentStatus.ingested
     await db.commit()
+
+    # Rebuild projections if events were written
+    if events_written > 0 and doc.portfolio_id:
+        portfolio = await db.get(Portfolio, doc.portfolio_id)
+        if portfolio:
+            await rebuild_portfolio(doc.portfolio_id, db)
+            await rebuild_entity_allocation(portfolio.entity_id, db)
+            await db.commit()
 
     return ConfirmResponse(events_written=events_written, skipped_duplicates=skipped)
 
