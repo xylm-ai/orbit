@@ -11,6 +11,7 @@ celery_app = Celery(
         "app.tasks.extract",
         "app.tasks.normalize",
         "app.tasks.stage",
+        "app.tasks.price_feed",
     ],
 )
 celery_app.conf.update(
@@ -18,4 +19,11 @@ celery_app.conf.update(
     result_serializer="json",
     accept_content=["json"],
     task_track_started=True,
+    beat_schedule={
+        "fetch-prices-every-15-min": {
+            "task": "app.tasks.price_feed.fetch_prices",
+            "schedule": 900.0,  # 15 minutes in seconds
+        },
+    },
+    timezone="UTC",
 )
