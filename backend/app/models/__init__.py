@@ -4,6 +4,8 @@ from app.models.entity import Entity, EntityType
 from app.models.portfolio import Portfolio, PortfolioType
 from app.models.access import FamilyUserAccess
 from app.models.event import PortfolioEvent, EventType
+from app.models.document import Document, DocumentSource, DocType, DocumentStatus
+from app.models.extraction import StagedExtraction, ReviewStatus
 
 __all__ = [
     "Family", "User", "UserRole",
@@ -11,4 +13,6 @@ __all__ = [
     "Portfolio", "PortfolioType",
     "FamilyUserAccess",
     "PortfolioEvent", "EventType",
+    "Document", "DocumentSource", "DocType", "DocumentStatus",
+    "StagedExtraction", "ReviewStatus",
 ]
