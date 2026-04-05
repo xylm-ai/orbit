@@ -15,5 +15,15 @@ services:
     ports:
       - "6379:6379"
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    env_file: ./backend/.env
+    depends_on:
+      - postgres
+      - redis
+    command: celery -A app.worker worker --loglevel=info
+
 volumes:
   postgres_data:
