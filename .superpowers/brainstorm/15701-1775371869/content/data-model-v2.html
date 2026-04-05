@@ -1,0 +1,115 @@
+<h2>ORBIT — Data Model (Updated)</h2>
+<p class="subtitle">Section 2 of 5 · Reflects actual data flow per asset class</p>
+
+<div class="section">
+  <h3>Data Flow by Asset Class</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0;">
+
+    <div style="background:rgba(99,102,241,0.08);border:1.5px solid rgba(99,102,241,0.3);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#818cf8;">Direct Equity (Shares)</div>
+      <div style="font-size:12px;margin-top:10px;line-height:2;">
+        <div style="padding:6px 8px;background:rgba(99,102,241,0.1);border-radius:6px;margin-bottom:4px;">📅 Opening Balance (1 Apr 2026)</div>
+        <div style="padding:6px 8px;background:rgba(99,102,241,0.1);border-radius:6px;margin-bottom:4px;">📄 Contract Notes (ongoing)</div>
+        <div style="padding:4px 8px;font-size:11px;color:#94a3b8;">→ SecurityBought / SecuritySold events</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#34d399;">PMS</div>
+      <div style="font-size:12px;margin-top:10px;line-height:2;">
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:4px;">📅 Opening Balance (1 Apr 2026)</div>
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:4px;">📄 Transaction Statements (ongoing)</div>
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:4px;">🏦 Bank Statement (validation)</div>
+        <div style="padding:4px 8px;font-size:11px;color:#94a3b8;">→ SecurityBought / SecuritySold / DividendReceived events</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#fbbf24;">Mutual Funds</div>
+      <div style="font-size:12px;margin-top:10px;line-height:2;">
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:4px;">📅 Opening Balance (1 Apr 2026)</div>
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:4px;">📄 CAS Statements (ongoing)</div>
+        <div style="padding:4px 8px;font-size:11px;color:#94a3b8;">→ MFUnitsPurchased / MFUnitsRedeemed events</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Event Store — portfolio_events (append-only)</h3>
+  <div style="background:rgba(245,158,11,0.06);border:1.5px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px;margin:12px 0;">
+    <div style="font-size:12px;font-family:monospace;line-height:2.2;">
+      <span style="color:#f87171;">id</span> uuid PK &nbsp;|&nbsp;
+      <span style="color:#fbbf24;">portfolio_id</span> uuid FK &nbsp;|&nbsp;
+      <span style="color:#34d399;">event_type</span> enum &nbsp;|&nbsp;
+      <span style="color:#c084fc;">payload</span> jsonb<br>
+      <span style="color:#94a3b8;">version</span> int &nbsp;|&nbsp;
+      <span style="color:#94a3b8;">event_date</span> date &nbsp;|&nbsp;
+      <span style="color:#94a3b8;">created_at</span> timestamptz &nbsp;|&nbsp;
+      <span style="color:#fbbf24;">ingestion_id</span> uuid FK &nbsp;|&nbsp;
+      <span style="color:#94a3b8;">created_by</span> uuid FK
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;">
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #818cf8;">OpeningBalanceSet<br><span style="color:#64748b;font-size:10px;">equity / pms / mf<br>1 Apr 2026</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #34d399;">SecurityBought<br><span style="color:#64748b;font-size:10px;">equity + pms</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #34d399;">SecuritySold<br><span style="color:#64748b;font-size:10px;">equity + pms</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #34d399;">DividendReceived<br><span style="color:#64748b;font-size:10px;">equity + pms</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #fbbf24;">MFUnitsPurchased<br><span style="color:#64748b;font-size:10px;">mf only</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #fbbf24;">MFUnitsRedeemed<br><span style="color:#64748b;font-size:10px;">mf only</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #ef4444;">BankEntryRecorded<br><span style="color:#64748b;font-size:10px;">pms validation</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;border-left:3px solid #ef4444;">ReconciliationFlagged<br><span style="color:#64748b;font-size:10px;">bank ↔ txn mismatch</span></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Bank Statement Reconciliation Logic (PMS)</h3>
+  <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.25);border-radius:10px;padding:14px;font-size:13px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <div class="label" style="color:#f87171;margin-bottom:8px;">Match Rule</div>
+        <div style="font-family:monospace;font-size:12px;line-height:2;">
+          Bank Debit → expect SecurityBought<br>
+          Bank Credit → expect SecuritySold or DividendReceived<br>
+          <br>
+          Match on: date ± 2 days + amount ± 0.5%
+        </div>
+      </div>
+      <div>
+        <div class="label" style="color:#f87171;margin-bottom:8px;">On Mismatch</div>
+        <div style="font-family:monospace;font-size:12px;line-height:2;">
+          → Write ReconciliationFlagged event<br>
+          → Notify user: "₹X debit on DD/MM has no matching transaction"<br>
+          → User resolves: link or mark as non-investment
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Read Projections</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;">
+    <div style="background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#c084fc;">holdings</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;color:#94a3b8;">
+        portfolio_id · isin<br>security_name · quantity<br>avg_cost · current_price<br>current_value · unrealised_pnl<br>asset_class · as_of
+      </div>
+    </div>
+    <div style="background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#c084fc;">performance_metrics</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;color:#94a3b8;">
+        portfolio_id<br>xirr · cagr · abs_return_pct<br>total_invested<br>current_value<br>realised_pnl · unrealised_pnl<br>as_of
+      </div>
+    </div>
+    <div style="background:rgba(168,85,247,0.06);border:1.5px solid rgba(168,85,247,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#c084fc;">prices</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;color:#94a3b8;">
+        isin · price<br>fetched_at (every 15 min)<br>source = motilal_api<br><br><span style="color:#64748b;">append-only time series</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this updated model look right? Confirm to proceed to Section 3: AI Ingestion Pipeline</p>

@@ -1,0 +1,97 @@
+<h2>ORBIT — System Architecture</h2>
+<p class="subtitle">Event-sourced investment intelligence platform · Section 1 of 5</p>
+
+<div class="section">
+  <h3>High-Level Architecture</h3>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;">
+
+    <!-- Ingestion Layer -->
+    <div style="background:rgba(99,102,241,0.08);border:1.5px solid rgba(99,102,241,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#818cf8;">Ingestion Layer</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(99,102,241,0.1);border-radius:6px;margin-bottom:6px;">📧 Inbound Email (Postmark)</div>
+        <div style="padding:6px 8px;background:rgba(99,102,241,0.1);border-radius:6px;margin-bottom:6px;">📤 Manual Upload (Next.js UI)</div>
+        <div style="padding:6px 8px;background:rgba(99,102,241,0.1);border-radius:6px;">→ Celery Job Queue (Redis)</div>
+      </div>
+    </div>
+
+    <!-- AI Pipeline -->
+    <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#34d399;">AI Pipeline (Celery Workers)</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:6px;">1. OCR / Table Extract</div>
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:6px;">2. LLM Extraction (GPT-4o)</div>
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;margin-bottom:6px;">3. Normalization</div>
+        <div style="padding:6px 8px;background:rgba(16,185,129,0.1);border-radius:6px;">4. User Review Gate</div>
+      </div>
+    </div>
+
+    <!-- Event Store -->
+    <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#fbbf24;">Event Store (PostgreSQL)</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:6px;">SecurityBought</div>
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:6px;">SecuritySold</div>
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:6px;">PMSSnapshotRecorded</div>
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;margin-bottom:6px;">DividendReceived</div>
+        <div style="padding:6px 8px;background:rgba(245,158,11,0.1);border-radius:6px;">MFUnitsPurchased / Redeemed</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0;">
+
+    <!-- Projections -->
+    <div style="background:rgba(239,68,68,0.08);border:1.5px solid rgba(239,68,68,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#f87171;">Read Projections (PostgreSQL)</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(239,68,68,0.1);border-radius:6px;margin-bottom:6px;">current_holdings</div>
+        <div style="padding:6px 8px;background:rgba(239,68,68,0.1);border-radius:6px;margin-bottom:6px;">performance_metrics</div>
+        <div style="padding:6px 8px;background:rgba(239,68,68,0.1);border-radius:6px;">allocation_snapshot</div>
+      </div>
+    </div>
+
+    <!-- Price Engine -->
+    <div style="background:rgba(168,85,247,0.08);border:1.5px solid rgba(168,85,247,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#c084fc;">Price Engine</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(168,85,247,0.1);border-radius:6px;margin-bottom:6px;">Motilal API (every 15 min)</div>
+        <div style="padding:6px 8px;background:rgba(168,85,247,0.1);border-radius:6px;margin-bottom:6px;">PriceUpdated events</div>
+        <div style="padding:6px 8px;background:rgba(168,85,247,0.1);border-radius:6px;">Triggers projection rebuild</div>
+      </div>
+    </div>
+
+    <!-- Presentation -->
+    <div style="background:rgba(20,184,166,0.08);border:1.5px solid rgba(20,184,166,0.3);border-radius:10px;padding:16px;">
+      <div class="label" style="color:#2dd4bf;">Presentation Layer</div>
+      <div style="margin-top:8px;font-size:13px;line-height:1.8;">
+        <div style="padding:6px 8px;background:rgba(20,184,166,0.1);border-radius:6px;margin-bottom:6px;">Next.js Dashboard</div>
+        <div style="padding:6px 8px;background:rgba(20,184,166,0.1);border-radius:6px;margin-bottom:6px;">FastAPI REST + WebSocket</div>
+        <div style="padding:6px 8px;background:rgba(20,184,166,0.1);border-radius:6px;">RBAC (owner / advisor / CA)</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>Key Design Decisions</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;">
+    <div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid #818cf8;">
+      <strong>Event store is append-only.</strong> No UPDATE or DELETE on events. Every change is a new event. Full audit trail by default.
+    </div>
+    <div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid #34d399;">
+      <strong>Projections are disposable.</strong> They can be rebuilt from the event log at any time. This means schema changes don't lose history.
+    </div>
+    <div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid #fbbf24;">
+      <strong>PMS gets a special event type.</strong> PMSSnapshotRecorded stores the full snapshot as payload. The projection engine knows to treat it as "override" not "accumulate".
+    </div>
+    <div style="padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border-left:3px solid #f87171;">
+      <strong>AI never writes directly to event store.</strong> Extracted data goes to a staging table. User confirms → events are written. Human-in-the-loop is enforced by architecture.
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this architecture look right? Confirm to move to Section 2: Data Model & Event Schema</p>

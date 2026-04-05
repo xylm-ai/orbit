@@ -1,0 +1,109 @@
+<h2>ORBIT — AI Ingestion Pipeline</h2>
+<p class="subtitle">Section 3 of 5 · From raw document to confirmed events</p>
+
+<div class="section">
+  <h3>Pipeline Overview</h3>
+  <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0;">
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(99,102,241,0.2);border:2px solid #818cf8;display:flex;align-items:center;justify-content:center;font-weight:700;color:#818cf8;font-size:13px;">1</div>
+      <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;">
+        <strong>Document Arrives</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Via email (Postmark webhook) or manual upload. Stored in S3/object storage. <code>documents</code> row created with status = <span style="color:#fbbf24;">pending</span>. Celery task enqueued.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(99,102,241,0.2);border:2px solid #818cf8;display:flex;align-items:center;justify-content:center;font-weight:700;color:#818cf8;font-size:13px;">2</div>
+      <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;">
+        <strong>Document Classification</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">LLM reads first page / metadata and classifies: <span style="font-family:monospace;">contract_note | pms_transaction | cas | bank_statement</span>. Assigns to correct entity + portfolio if identifiable (PAN, account no, provider name).</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(99,102,241,0.2);border:2px solid #818cf8;display:flex;align-items:center;justify-content:center;font-weight:700;color:#818cf8;font-size:13px;">3</div>
+      <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;">
+        <strong>Pre-processing</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">PDF → text via pdfplumber. Scanned PDFs → OCR via Tesseract. Excel → pandas. Tables detected and extracted as structured grids. Text cleaned and chunked for LLM context limits.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(16,185,129,0.2);border:2px solid #34d399;display:flex;align-items:center;justify-content:center;font-weight:700;color:#34d399;font-size:13px;">4</div>
+      <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.2);border-radius:10px;padding:12px;">
+        <strong>LLM Extraction (GPT-4o)</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Structured prompt per document type. Extracts: ISIN, security name, quantity, price, amount, date, transaction type. Returns JSON with per-field <code>confidence_score</code>. Low-confidence fields flagged for human review.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;font-size:11px;">
+          <div style="padding:4px 8px;background:rgba(16,185,129,0.1);border-radius:4px;font-family:monospace;">Contract Note → SecurityBought/Sold</div>
+          <div style="padding:4px 8px;background:rgba(16,185,129,0.1);border-radius:4px;font-family:monospace;">PMS Txn → SecurityBought/Sold/Dividend</div>
+          <div style="padding:4px 8px;background:rgba(16,185,129,0.1);border-radius:4px;font-family:monospace;">CAS → MFUnitsPurchased/Redeemed</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(99,102,241,0.2);border:2px solid #818cf8;display:flex;align-items:center;justify-content:center;font-weight:700;color:#818cf8;font-size:13px;">5</div>
+      <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.2);border-radius:10px;padding:12px;">
+        <strong>Normalization</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">ISIN lookup + validation. Security name → canonical name mapping. Currency normalization. Date parsing (DD/MM/YY, DD-Mon-YYYY etc). "Qty" → quantity, "Mkt Val" → current_value. Duplicate detection (same ISIN + date + amount already in event store).</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(245,158,11,0.2);border:2px solid #fbbf24;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fbbf24;font-size:13px;">6</div>
+      <div style="background:rgba(245,158,11,0.06);border:1.5px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px;">
+        <strong>Staging + Validation</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Extracted rows written to <code>staged_extractions</code>. Auto-checks: totals reconcile, no missing fields, no duplicate events. Document status → <span style="color:#fbbf24;">awaiting_review</span>. User notified.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start;">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(239,68,68,0.2);border:2px solid #f87171;display:flex;align-items:center;justify-content:center;font-weight:700;color:#f87171;font-size:13px;">7</div>
+      <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.2);border-radius:10px;padding:12px;">
+        <strong>User Review & Confirm</strong>
+        <div style="font-size:12px;color:#94a3b8;margin-top:4px;">UI shows extracted rows. Low-confidence fields highlighted. User can edit inline or reject individual rows. On confirm → events written to <code>portfolio_events</code>. Projections rebuilt. Document status → <span style="color:#34d399;">ingested</span>.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Bank Statement Path (PMS Reconciliation)</h3>
+  <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.2);border-radius:10px;padding:14px;font-size:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="label" style="color:#f87171;margin-bottom:8px;">Extraction</div>
+        Bank statement parsed → list of debits + credits with date + amount + narration.<br>Written as <code>BankEntryRecorded</code> events (not holdings events).<br>Narration parsed by LLM to detect investment-related entries.
+      </div>
+      <div>
+        <div class="label" style="color:#f87171;margin-bottom:8px;">Reconciliation Run</div>
+        After both PMS transactions + bank entries are ingested:<br>
+        Match bank debits → SecurityBought (date ± 2d, amount ± 0.5%)<br>
+        Unmatched entries → <code>ReconciliationFlagged</code> event<br>
+        User reviews flags and resolves.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Error & Retry Handling</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;margin-top:8px;">
+    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border-top:2px solid #f87171;">
+      <strong>LLM failure / timeout</strong><br>
+      <span style="color:#94a3b8;">Celery retries 3x with backoff. After 3 failures → document marked failed, user notified to re-upload.</span>
+    </div>
+    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border-top:2px solid #fbbf24;">
+      <strong>Low confidence (&lt;0.7)</strong><br>
+      <span style="color:#94a3b8;">Field flagged in review UI with yellow highlight. User must explicitly confirm or correct before ingestion proceeds.</span>
+    </div>
+    <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border-top:2px solid #34d399;">
+      <strong>Duplicate detected</strong><br>
+      <span style="color:#94a3b8;">Event with same portfolio_id + event_date + isin + amount already exists → row skipped with warning shown in review UI.</span>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this pipeline look right? Confirm to proceed to Section 4: RBAC & Multi-Entity Model</p>

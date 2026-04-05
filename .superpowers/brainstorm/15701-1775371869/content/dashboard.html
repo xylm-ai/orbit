@@ -1,0 +1,155 @@
+<h2>ORBIT — Dashboard & Presentation Layer</h2>
+<p class="subtitle">Section 5 of 5 · Navigation structure, key screens, data flow to UI</p>
+
+<div class="section">
+  <h3>Navigation Structure</h3>
+  <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;margin:12px 0;">
+
+    <div style="background:rgba(15,23,42,0.8);border:1.5px solid #1e293b;border-radius:10px;padding:12px;">
+      <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:0.1em;margin-bottom:10px;">ORBIT</div>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:12px;">
+        <div style="padding:7px 10px;background:rgba(99,102,241,0.2);border-radius:6px;color:#818cf8;font-weight:600;">Overview</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Net Worth</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">PMS Intelligence</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Direct Equity</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Mutual Funds</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Transactions</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Alerts</div>
+        <div style="margin-top:8px;border-top:1px solid #1e293b;padding-top:8px;color:#94a3b8;">Documents</div>
+        <div style="padding:7px 10px;color:#94a3b8;border-radius:6px;">Settings</div>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid #1e293b;padding-top:8px;">
+        <div style="font-size:10px;color:#475569;margin-bottom:4px;">ENTITY</div>
+        <div style="font-size:11px;padding:5px 8px;background:rgba(16,185,129,0.1);border-radius:5px;color:#34d399;">All Entities ▾</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <div style="background:rgba(15,23,42,0.6);border:1.5px solid #1e293b;border-radius:10px;padding:14px;">
+        <div class="label" style="color:#818cf8;margin-bottom:10px;">Overview Screen</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px;">
+          <div style="padding:10px;background:rgba(99,102,241,0.08);border-radius:8px;border-top:2px solid #818cf8;">
+            <div style="color:#94a3b8;font-size:10px;">TOTAL NET WORTH</div>
+            <div style="font-size:16px;font-weight:700;margin-top:4px;">₹4.2 Cr</div>
+            <div style="color:#34d399;font-size:10px;margin-top:2px;">↑ 2.3% today</div>
+          </div>
+          <div style="padding:10px;background:rgba(16,185,129,0.08);border-radius:8px;border-top:2px solid #34d399;">
+            <div style="color:#94a3b8;font-size:10px;">PORTFOLIO XIRR</div>
+            <div style="font-size:16px;font-weight:700;margin-top:4px;">18.4%</div>
+            <div style="color:#94a3b8;font-size:10px;margin-top:2px;">since Apr 2026</div>
+          </div>
+          <div style="padding:10px;background:rgba(245,158,11,0.08);border-radius:8px;border-top:2px solid #fbbf24;">
+            <div style="color:#94a3b8;font-size:10px;">UNREALISED P&L</div>
+            <div style="font-size:16px;font-weight:700;margin-top:4px;">₹68.4L</div>
+            <div style="color:#34d399;font-size:10px;margin-top:2px;">+19.4%</div>
+          </div>
+          <div style="padding:10px;background:rgba(239,68,68,0.08);border-radius:8px;border-top:2px solid #f87171;">
+            <div style="color:#94a3b8;font-size:10px;">ACTIVE ALERTS</div>
+            <div style="font-size:16px;font-weight:700;margin-top:4px;">3</div>
+            <div style="color:#f87171;font-size:10px;margin-top:2px;">2 unread</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:12px;">
+          <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">
+            <div style="color:#94a3b8;font-size:10px;margin-bottom:6px;">ALLOCATION</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="display:flex;justify-content:space-between;"><span>PMS</span><span style="color:#818cf8;">52%</span></div>
+              <div style="height:4px;background:#1e293b;border-radius:2px;"><div style="width:52%;height:100%;background:#818cf8;border-radius:2px;"></div></div>
+              <div style="display:flex;justify-content:space-between;"><span>Direct Equity</span><span style="color:#34d399;">28%</span></div>
+              <div style="height:4px;background:#1e293b;border-radius:2px;"><div style="width:28%;height:100%;background:#34d399;border-radius:2px;"></div></div>
+              <div style="display:flex;justify-content:space-between;"><span>Mutual Funds</span><span style="color:#fbbf24;">20%</span></div>
+              <div style="height:4px;background:#1e293b;border-radius:2px;"><div style="width:20%;height:100%;background:#fbbf24;border-radius:2px;"></div></div>
+            </div>
+          </div>
+          <div style="padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;">
+            <div style="color:#94a3b8;font-size:10px;margin-bottom:6px;">PMS PERFORMANCE</div>
+            <div style="display:flex;flex-direction:column;gap:5px;">
+              <div style="display:flex;justify-content:space-between;"><span>Motilal NTDOP</span><span style="color:#34d399;">22.1%</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>ASK IEP</span><span style="color:#34d399;">17.8%</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>Marcellus CCP</span><span style="color:#f87171;">11.2%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">
+        <div style="background:rgba(15,23,42,0.6);border:1.5px solid #1e293b;border-radius:10px;padding:12px;">
+          <div class="label" style="color:#34d399;margin-bottom:8px;">PMS Intelligence Screen</div>
+          <div style="color:#94a3b8;line-height:1.8;">
+            Per-PMS XIRR · drawdown · gain/loss<br>
+            Stock overlap heatmap across PMS<br>
+            Sector concentration by PMS<br>
+            Transaction history per PMS
+          </div>
+        </div>
+        <div style="background:rgba(15,23,42,0.6);border:1.5px solid #1e293b;border-radius:10px;padding:12px;">
+          <div class="label" style="color:#fbbf24;margin-bottom:8px;">Documents Screen</div>
+          <div style="color:#94a3b8;line-height:1.8;">
+            Upload new document<br>
+            Processing status per doc<br>
+            Pending review queue<br>
+            Ingestion history + audit trail
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>API Layer (FastAPI → Next.js)</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;margin:10px 0;">
+    <div style="padding:10px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:8px;">
+      <div class="label" style="color:#818cf8;margin-bottom:6px;">Portfolio APIs</div>
+      <div style="font-family:monospace;color:#94a3b8;line-height:2;">
+        GET /portfolio/summary<br>
+        GET /portfolio/holdings<br>
+        GET /portfolio/performance<br>
+        GET /portfolio/allocation
+      </div>
+    </div>
+    <div style="padding:10px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:8px;">
+      <div class="label" style="color:#34d399;margin-bottom:6px;">Ingestion APIs</div>
+      <div style="font-family:monospace;color:#94a3b8;line-height:2;">
+        POST /documents/upload<br>
+        GET /documents/{id}/status<br>
+        GET /extractions/{id}/review<br>
+        POST /extractions/{id}/confirm
+      </div>
+    </div>
+    <div style="padding:10px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:8px;">
+      <div class="label" style="color:#fbbf24;margin-bottom:6px;">Entity & Auth APIs</div>
+      <div style="font-family:monospace;color:#94a3b8;line-height:2;">
+        POST /auth/login (2FA)<br>
+        GET /entities<br>
+        POST /entities/{id}/invite<br>
+        GET /audit-log
+      </div>
+    </div>
+  </div>
+  <div style="padding:10px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.2);border-radius:8px;font-size:12px;margin-top:4px;">
+    <span class="label" style="color:#c084fc;">WebSocket</span> — <span style="font-family:monospace;">ws://api/portfolio/live</span> — pushes price updates and processing status to dashboard every 15 min (aligned with Motilal price refresh)
+  </div>
+</div>
+
+<div class="section">
+  <h3>Alerts (MVP)</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px;margin:10px 0;">
+    <div style="padding:10px;background:rgba(239,68,68,0.06);border-radius:8px;border-left:3px solid #f87171;">
+      <strong>Portfolio Drawdown</strong><br>
+      <span style="color:#94a3b8;">Portfolio down &gt;X% from peak → email + in-app alert</span>
+    </div>
+    <div style="padding:10px;background:rgba(239,68,68,0.06);border-radius:8px;border-left:3px solid #fbbf24;">
+      <strong>Overexposure</strong><br>
+      <span style="color:#94a3b8;">Single stock or sector &gt;Y% of total portfolio → alert</span>
+    </div>
+    <div style="padding:10px;background:rgba(239,68,68,0.06);border-radius:8px;border-left:3px solid #818cf8;">
+      <strong>Reconciliation Flag</strong><br>
+      <span style="color:#94a3b8;">Bank debit with no matching PMS transaction → alert with details</span>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">That completes all 5 sections. Does the full design look right? Confirm and I'll write the spec document.</p>

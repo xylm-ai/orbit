@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBIT — Full Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080f1e; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; font-size: 13px; }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { background: #0d1729; border-right: 1px solid #1e2d45; padding: 20px 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .logo { padding: 0 20px 20px; border-bottom: 1px solid #1e2d45; }
+  .logo-mark { font-size: 18px; font-weight: 800; letter-spacing: 0.08em; background: linear-gradient(135deg, #6366f1, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo-sub { font-size: 10px; color: #475569; letter-spacing: 0.05em; margin-top: 2px; }
+
+  .entity-pill { margin: 14px 14px 8px; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 8px 12px; font-size: 11px; cursor: pointer; }
+  .entity-pill .label { color: #475569; font-size: 10px; letter-spacing: 0.05em; margin-bottom: 2px; }
+  .entity-pill .value { color: #818cf8; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+
+  .nav-section { padding: 12px 0 4px; }
+  .nav-label { padding: 4px 20px; font-size: 10px; color: #334155; letter-spacing: 0.1em; font-weight: 600; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; color: #64748b; cursor: pointer; font-size: 12px; transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: #94a3b8; background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: #818cf8; background: rgba(99,102,241,0.08); border-left-color: #6366f1; }
+  .nav-item .icon { width: 16px; text-align: center; font-size: 14px; }
+  .nav-badge { margin-left: auto; background: #ef4444; color: white; font-size: 9px; padding: 1px 5px; border-radius: 10px; font-weight: 700; }
+
+  /* Main content */
+  .main { overflow-y: auto; }
+  .topbar { background: #0d1729; border-bottom: 1px solid #1e2d45; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-time { font-size: 11px; color: #475569; }
+  .topbar-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
+  .topbar-user { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #06b6d4); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+  .content { padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* Section headers */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 13px; font-weight: 600; color: #94a3b8; letter-spacing: 0.04em; }
+  .section-link { font-size: 11px; color: #475569; cursor: pointer; }
+  .section-link:hover { color: #818cf8; }
+
+  /* Cards */
+  .card { background: #0d1729; border: 1px solid #1e2d45; border-radius: 12px; padding: 16px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi { background: #0d1729; border: 1px solid #1e2d45; border-radius: 12px; padding: 16px; }
+  .kpi-label { font-size: 10px; color: #475569; letter-spacing: 0.08em; font-weight: 600; }
+  .kpi-value { font-size: 22px; font-weight: 700; margin: 6px 0 4px; }
+  .kpi-sub { font-size: 11px; }
+  .up { color: #22c55e; }
+  .down { color: #ef4444; }
+  .neutral { color: #94a3b8; }
+
+  /* Two col layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* Allocation bars */
+  .alloc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .alloc-label { width: 100px; font-size: 12px; color: #94a3b8; }
+  .alloc-bar-bg { flex: 1; height: 6px; background: #1e2d45; border-radius: 3px; }
+  .alloc-bar { height: 100%; border-radius: 3px; }
+  .alloc-pct { width: 36px; text-align: right; font-size: 12px; font-weight: 600; }
+
+  /* PMS table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { padding: 8px 12px; text-align: left; color: #475569; font-size: 10px; letter-spacing: 0.07em; border-bottom: 1px solid #1e2d45; font-weight: 600; }
+  td { padding: 10px 12px; border-bottom: 1px solid #0f1f35; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .badge-yellow { background: rgba(234,179,8,0.15); color: #eab308; }
+
+  /* Overlap heatmap */
+  .heatmap { display: grid; grid-template-columns: 80px repeat(3, 1fr); gap: 3px; font-size: 11px; }
+  .hm-cell { padding: 8px 6px; border-radius: 5px; text-align: center; font-weight: 600; }
+  .hm-label { display: flex; align-items: center; font-size: 11px; color: #64748b; }
+  .hm-header { padding: 8px 6px; text-align: center; color: #475569; font-size: 10px; letter-spacing: 0.05em; font-weight: 600; }
+
+  /* Holdings */
+  .holding-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid #0f1f35; align-items: center; font-size: 12px; }
+  .holding-row:last-child { border-bottom: none; }
+  .holding-name { font-weight: 500; }
+  .holding-isin { font-size: 10px; color: #475569; margin-top: 1px; }
+
+  /* Alerts */
+  .alert-item { display: flex; gap: 12px; padding: 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid; }
+  .alert-item:last-child { margin-bottom: 0; }
+  .alert-red { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
+  .alert-yellow { background: rgba(234,179,8,0.06); border-color: rgba(234,179,8,0.2); }
+  .alert-blue { background: rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.2); }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .alert-title { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
+  .alert-body { font-size: 11px; color: #94a3b8; }
+
+  /* Documents */
+  .doc-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #0f1f35; }
+  .doc-item:last-child { border-bottom: none; }
+  .doc-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .doc-info { flex: 1; }
+  .doc-name { font-size: 12px; font-weight: 500; }
+  .doc-meta { font-size: 10px; color: #475569; margin-top: 2px; }
+  .status-pill { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .status-ingested { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .status-review { background: rgba(234,179,8,0.15); color: #eab308; }
+  .status-processing { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+  /* MF */
+  .mf-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid #0f1f35; align-items: center; font-size: 12px; }
+  .mf-row:last-child { border-bottom: none; }
+
+  /* Transactions */
+  .txn-row { display: grid; grid-template-columns: 90px 1.5fr 80px 1fr 1fr 80px; gap: 8px; padding: 9px 0; border-bottom: 1px solid #0f1f35; align-items: center; font-size: 11px; }
+  .txn-row:last-child { border-bottom: none; }
+
+  /* Tab bar */
+  .tabs { display: flex; gap: 4px; background: #0a1525; border: 1px solid #1e2d45; border-radius: 8px; padding: 3px; width: fit-content; margin-bottom: 14px; }
+  .tab { padding: 5px 14px; border-radius: 6px; font-size: 11px; cursor: pointer; color: #475569; transition: all 0.15s; }
+  .tab.active { background: #1e2d45; color: #e2e8f0; font-weight: 600; }
+
+  /* Screen sections */
+  .screen { padding: 0 0 32px; border-bottom: 1px solid #1e2d45; margin-bottom: 8px; }
+  .screen:last-child { border-bottom: none; }
+  .screen-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #334155; text-transform: uppercase; padding: 16px 0 14px; }
+
+  /* Divider label */
+  .divider { display: flex; align-items: center; gap: 12px; margin: 8px 0 20px; }
+  .divider-line { flex: 1; height: 1px; background: #1e2d45; }
+  .divider-text { font-size: 10px; color: #334155; letter-spacing: 0.1em; font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">ORBIT</div>
+      <div class="logo-sub">WEALTH INTELLIGENCE</div>
+    </div>
+
+    <div class="entity-pill">
+      <div class="label">ENTITY</div>
+      <div class="value">All Entities <span>▾</span></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">PORTFOLIO</div>
+      <div class="nav-item active"><span class="icon">⬡</span> Overview</div>
+      <div class="nav-item"><span class="icon">◈</span> Net Worth</div>
+      <div class="nav-item"><span class="icon">◎</span> PMS Intelligence</div>
+      <div class="nav-item"><span class="icon">◐</span> Direct Equity</div>
+      <div class="nav-item"><span class="icon">◑</span> Mutual Funds</div>
+      <div class="nav-item"><span class="icon">≡</span> Transactions</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">MONITOR</div>
+      <div class="nav-item"><span class="icon">◬</span> Alerts <span class="nav-badge">3</span></div>
+      <div class="nav-item"><span class="icon">↑</span> Documents <span class="nav-badge">2</span></div>
+    </div>
+
+    <div class="nav-section" style="margin-top:auto;">
+      <div class="nav-label">ACCOUNT</div>
+      <div class="nav-item"><span class="icon">⊙</span> Settings</div>
+      <div class="nav-item"><span class="icon">⊕</span> Invite Users</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">ORBIT Dashboard</div>
+      <div class="topbar-right">
+        <div class="topbar-dot"></div>
+        <div class="topbar-time">Prices live · Updated 2 min ago</div>
+        <div class="topbar-user">RS</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ═══ SCREEN 1: OVERVIEW ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">OVERVIEW</div><div class="divider-line"></div></div>
+
+        <div class="kpi-grid" style="margin-bottom:14px;">
+          <div class="kpi" style="border-top: 2px solid #6366f1;">
+            <div class="kpi-label">TOTAL NET WORTH</div>
+            <div class="kpi-value">₹4.24 Cr</div>
+            <div class="kpi-sub up">↑ ₹9.6L today (+2.3%)</div>
+          </div>
+          <div class="kpi" style="border-top: 2px solid #22c55e;">
+            <div class="kpi-label">PORTFOLIO XIRR</div>
+            <div class="kpi-value up">18.4%</div>
+            <div class="kpi-sub neutral">Since 1 Apr 2026</div>
+          </div>
+          <div class="kpi" style="border-top: 2px solid #06b6d4;">
+            <div class="kpi-label">UNREALISED P&L</div>
+            <div class="kpi-value">₹68.4L</div>
+            <div class="kpi-sub up">+19.4% on cost</div>
+          </div>
+          <div class="kpi" style="border-top: 2px solid #ef4444;">
+            <div class="kpi-label">ACTIVE ALERTS</div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-sub down">2 require action</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="section-header"><span class="section-title">ASSET ALLOCATION</span></div>
+            <div class="alloc-row">
+              <div class="alloc-label">PMS</div>
+              <div class="alloc-bar-bg"><div class="alloc-bar" style="width:52%;background:#6366f1;"></div></div>
+              <div class="alloc-pct" style="color:#818cf8;">52%</div>
+              <div style="width:60px;text-align:right;color:#94a3b8;font-size:11px;">₹2.20 Cr</div>
+            </div>
+            <div class="alloc-row">
+              <div class="alloc-label">Direct Equity</div>
+              <div class="alloc-bar-bg"><div class="alloc-bar" style="width:28%;background:#22c55e;"></div></div>
+              <div class="alloc-pct" style="color:#22c55e;">28%</div>
+              <div style="width:60px;text-align:right;color:#94a3b8;font-size:11px;">₹1.19 Cr</div>
+            </div>
+            <div class="alloc-row">
+              <div class="alloc-label">Mutual Funds</div>
+              <div class="alloc-bar-bg"><div class="alloc-bar" style="width:20%;background:#f59e0b;"></div></div>
+              <div class="alloc-pct" style="color:#f59e0b;">20%</div>
+              <div style="width:60px;text-align:right;color:#94a3b8;font-size:11px;">₹84.8L</div>
+            </div>
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid #1e2d45;">
+              <div class="section-title" style="margin-bottom:10px;">TOP SECTOR EXPOSURE</div>
+              <div class="alloc-row">
+                <div class="alloc-label">Financial Svcs</div>
+                <div class="alloc-bar-bg"><div class="alloc-bar" style="width:34%;background:#06b6d4;"></div></div>
+                <div class="alloc-pct" style="color:#06b6d4;">34%</div>
+              </div>
+              <div class="alloc-row">
+                <div class="alloc-label">Technology</div>
+                <div class="alloc-bar-bg"><div class="alloc-bar" style="width:22%;background:#8b5cf6;"></div></div>
+                <div class="alloc-pct" style="color:#8b5cf6;">22%</div>
+              </div>
+              <div class="alloc-row">
+                <div class="alloc-label">Consumer</div>
+                <div class="alloc-bar-bg"><div class="alloc-bar" style="width:18%;background:#ec4899;"></div></div>
+                <div class="alloc-pct" style="color:#ec4899;">18%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-header"><span class="section-title">PMS PERFORMANCE</span><span class="section-link">View all →</span></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>PMS</th>
+                  <th>Value</th>
+                  <th>XIRR</th>
+                  <th>P&L</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div style="font-weight:500;">Motilal NTDOP</div><div style="font-size:10px;color:#475569;">Rajesh – Individual</div></td>
+                  <td>₹85.2L</td>
+                  <td class="up">22.1%</td>
+                  <td class="up">+₹15.4L</td>
+                  <td><span class="badge badge-green">Outperform</span></td>
+                </tr>
+                <tr>
+                  <td><div style="font-weight:500;">ASK IEP</div><div style="font-size:10px;color:#475569;">Rajesh – Individual</div></td>
+                  <td>₹72.1L</td>
+                  <td class="up">17.8%</td>
+                  <td class="up">+₹11.0L</td>
+                  <td><span class="badge badge-green">On track</span></td>
+                </tr>
+                <tr>
+                  <td><div style="font-weight:500;">Marcellus CCP</div><div style="font-size:10px;color:#475569;">RS Holdings</div></td>
+                  <td>₹62.7L</td>
+                  <td class="down">11.2%</td>
+                  <td class="up">+₹7.0L</td>
+                  <td><span class="badge badge-red">Underperform</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 2: PMS INTELLIGENCE ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">PMS INTELLIGENCE</div><div class="divider-line"></div></div>
+
+        <div class="three-col" style="margin-bottom:14px;">
+          <div class="kpi" style="border-top:2px solid #6366f1;">
+            <div class="kpi-label">TOTAL PMS AUM</div>
+            <div class="kpi-value">₹2.20 Cr</div>
+            <div class="kpi-sub up">↑ 18.6% XIRR</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #f59e0b;">
+            <div class="kpi-label">MAX DRAWDOWN</div>
+            <div class="kpi-value down">-8.4%</div>
+            <div class="kpi-sub neutral">Marcellus CCP · Jun 26</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #22c55e;">
+            <div class="kpi-label">BEST PERFORMER</div>
+            <div class="kpi-value up">22.1%</div>
+            <div class="kpi-sub neutral">Motilal NTDOP</div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <div class="section-header"><span class="section-title">STOCK OVERLAP ACROSS PMS</span></div>
+            <div class="heatmap">
+              <div></div>
+              <div class="hm-header">Motilal</div>
+              <div class="hm-header">ASK</div>
+              <div class="hm-header">Marcellus</div>
+
+              <div class="hm-label">Motilal</div>
+              <div class="hm-cell" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">—</div>
+              <div class="hm-cell" style="background:rgba(239,68,68,0.35);color:#fca5a5;">6</div>
+              <div class="hm-cell" style="background:rgba(234,179,8,0.2);color:#fde047;">3</div>
+
+              <div class="hm-label">ASK</div>
+              <div class="hm-cell" style="background:rgba(239,68,68,0.35);color:#fca5a5;">6</div>
+              <div class="hm-cell" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">—</div>
+              <div class="hm-cell" style="background:rgba(34,197,94,0.15);color:#86efac;">2</div>
+
+              <div class="hm-label">Marcellus</div>
+              <div class="hm-cell" style="background:rgba(234,179,8,0.2);color:#fde047;">3</div>
+              <div class="hm-cell" style="background:rgba(34,197,94,0.15);color:#86efac;">2</div>
+              <div class="hm-cell" style="background:rgba(99,102,241,0.3);color:#c7d2fe;">—</div>
+            </div>
+            <div style="margin-top:10px;font-size:10px;color:#475569;">Numbers = shared stock count. Red = high overlap risk.</div>
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(239,68,68,0.08);border-radius:6px;font-size:11px;color:#fca5a5;">
+              ⚠ HDFC Bank held by both Motilal & ASK — combined weight 14.2% of total portfolio
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-header"><span class="section-title">SECTOR CONCENTRATION BY PMS</span></div>
+            <table>
+              <thead><tr><th>Sector</th><th>Motilal</th><th>ASK</th><th>Marcellus</th><th>Total</th></tr></thead>
+              <tbody>
+                <tr><td>Financial Svcs</td><td>38%</td><td>32%</td><td>28%</td><td class="up" style="font-weight:600;">34%</td></tr>
+                <tr><td>Technology</td><td>24%</td><td>18%</td><td>22%</td><td style="font-weight:600;">22%</td></tr>
+                <tr><td>Consumer</td><td>14%</td><td>22%</td><td>16%</td><td style="font-weight:600;">17%</td></tr>
+                <tr><td>Healthcare</td><td>12%</td><td>15%</td><td>20%</td><td style="font-weight:600;">15%</td></tr>
+                <tr><td>Others</td><td>12%</td><td>13%</td><td>14%</td><td style="font-weight:600;">13%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 3: DIRECT EQUITY ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">DIRECT EQUITY</div><div class="divider-line"></div></div>
+
+        <div class="three-col" style="margin-bottom:14px;">
+          <div class="kpi" style="border-top:2px solid #22c55e;">
+            <div class="kpi-label">EQUITY VALUE</div>
+            <div class="kpi-value">₹1.19 Cr</div>
+            <div class="kpi-sub up">↑ 21.3% XIRR</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #06b6d4;">
+            <div class="kpi-label">HOLDINGS</div>
+            <div class="kpi-value">24</div>
+            <div class="kpi-sub neutral">Across 2 brokers</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #8b5cf6;">
+            <div class="kpi-label">REALISED P&L (FY)</div>
+            <div class="kpi-value up">₹8.2L</div>
+            <div class="kpi-sub neutral">After brokerage</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header"><span class="section-title">HOLDINGS</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="tabs" style="margin-bottom:0;">
+                <div class="tab active">All</div>
+                <div class="tab">Zerodha</div>
+                <div class="tab">ICICI Sec</div>
+              </div>
+            </div>
+          </div>
+          <div class="holding-row" style="font-size:10px;color:#475569;font-weight:600;letter-spacing:0.05em;padding-bottom:6px;border-bottom:1px solid #1e2d45;">
+            <div>SECURITY</div><div>QTY · AVG COST</div><div>CMP</div><div>VALUE</div><div>P&L</div>
+          </div>
+          <div class="holding-row">
+            <div><div class="holding-name">Reliance Industries</div><div class="holding-isin">INE002A01018 · Zerodha</div></div>
+            <div>120 · ₹2,410</div>
+            <div>₹2,894</div>
+            <div style="font-weight:600;">₹3.47L</div>
+            <div class="up">+₹58.1K (+20.1%)</div>
+          </div>
+          <div class="holding-row">
+            <div><div class="holding-name">Infosys Ltd</div><div class="holding-isin">INE009A01021 · Zerodha</div></div>
+            <div>200 · ₹1,480</div>
+            <div>₹1,612</div>
+            <div style="font-weight:600;">₹3.22L</div>
+            <div class="up">+₹26.4K (+8.9%)</div>
+          </div>
+          <div class="holding-row">
+            <div><div class="holding-name">HDFC Bank</div><div class="holding-isin">INE040A01034 · ICICI Sec</div></div>
+            <div>150 · ₹1,620</div>
+            <div>₹1,542</div>
+            <div style="font-weight:600;">₹2.31L</div>
+            <div class="down">-₹11.7K (-4.8%)</div>
+          </div>
+          <div class="holding-row">
+            <div><div class="holding-name">Tata Consultancy</div><div class="holding-isin">INE467B01029 · Zerodha</div></div>
+            <div>80 · ₹3,320</div>
+            <div>₹3,788</div>
+            <div style="font-weight:600;">₹3.03L</div>
+            <div class="up">+₹37.4K (+14.1%)</div>
+          </div>
+          <div style="text-align:center;padding-top:10px;font-size:11px;color:#475569;cursor:pointer;">Show all 24 holdings →</div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 4: MUTUAL FUNDS ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">MUTUAL FUNDS</div><div class="divider-line"></div></div>
+
+        <div class="three-col" style="margin-bottom:14px;">
+          <div class="kpi" style="border-top:2px solid #f59e0b;">
+            <div class="kpi-label">MF VALUE</div>
+            <div class="kpi-value">₹84.8L</div>
+            <div class="kpi-sub up">↑ 14.2% XIRR</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #06b6d4;">
+            <div class="kpi-label">FUNDS</div>
+            <div class="kpi-value">8</div>
+            <div class="kpi-sub neutral">4 equity · 3 debt · 1 hybrid</div>
+          </div>
+          <div class="kpi" style="border-top:2px solid #22c55e;">
+            <div class="kpi-label">TOTAL INVESTED</div>
+            <div class="kpi-value">₹74.2L</div>
+            <div class="kpi-sub up">+₹10.6L unrealised</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header"><span class="section-title">FUND HOLDINGS</span></div>
+          <div class="mf-row" style="font-size:10px;color:#475569;font-weight:600;letter-spacing:0.05em;padding-bottom:6px;border-bottom:1px solid #1e2d45;">
+            <div>FUND</div><div>UNITS</div><div>NAV</div><div>VALUE</div><div>XIRR</div>
+          </div>
+          <div class="mf-row">
+            <div><div style="font-weight:500;">Mirae Asset Large Cap</div><div style="font-size:10px;color:#475569;">Direct Growth · Equity</div></div>
+            <div>4,820</div>
+            <div>₹108.4</div>
+            <div style="font-weight:600;">₹52.2L</div>
+            <div class="up">16.8%</div>
+          </div>
+          <div class="mf-row">
+            <div><div style="font-weight:500;">HDFC Flexi Cap</div><div style="font-size:10px;color:#475569;">Direct Growth · Equity</div></div>
+            <div>2,140</div>
+            <div>₹112.6</div>
+            <div style="font-weight:600;">₹24.1L</div>
+            <div class="up">12.4%</div>
+          </div>
+          <div class="mf-row">
+            <div><div style="font-weight:500;">ICICI Pru Short Term</div><div style="font-size:10px;color:#475569;">Direct Growth · Debt</div></div>
+            <div>6,300</div>
+            <div>₹136.2</div>
+            <div style="font-weight:600;">₹8.6L</div>
+            <div class="neutral">7.1%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 5: TRANSACTIONS ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">TRANSACTIONS</div><div class="divider-line"></div></div>
+
+        <div class="card">
+          <div class="tabs">
+            <div class="tab active">All</div>
+            <div class="tab">PMS</div>
+            <div class="tab">Equity</div>
+            <div class="tab">MF</div>
+          </div>
+          <div class="txn-row" style="font-size:10px;color:#475569;font-weight:600;letter-spacing:0.05em;padding-bottom:6px;border-bottom:1px solid #1e2d45;">
+            <div>DATE</div><div>SECURITY</div><div>TYPE</div><div>QTY · PRICE</div><div>AMOUNT</div><div>SOURCE</div>
+          </div>
+          <div class="txn-row">
+            <div style="color:#94a3b8;">12 Jun 2026</div>
+            <div><div style="font-weight:500;">Reliance Ind.</div><div style="font-size:10px;color:#475569;">INE002A01018</div></div>
+            <div><span class="badge badge-green">BUY</span></div>
+            <div>50 · ₹2,860</div>
+            <div style="font-weight:500;">₹1,43,000</div>
+            <div style="color:#475569;">Contract Note</div>
+          </div>
+          <div class="txn-row">
+            <div style="color:#94a3b8;">10 Jun 2026</div>
+            <div><div style="font-weight:500;">ASK IEP – HDFC Bank</div><div style="font-size:10px;color:#475569;">INE040A01034</div></div>
+            <div><span class="badge badge-red">SELL</span></div>
+            <div>100 · ₹1,580</div>
+            <div style="font-weight:500;">₹1,58,000</div>
+            <div style="color:#475569;">PMS Txn Stmt</div>
+          </div>
+          <div class="txn-row">
+            <div style="color:#94a3b8;">5 Jun 2026</div>
+            <div><div style="font-weight:500;">Mirae Asset Large Cap</div><div style="font-size:10px;color:#475569;">Direct Growth</div></div>
+            <div><span class="badge badge-green">BUY</span></div>
+            <div>920 · ₹104.2</div>
+            <div style="font-weight:500;">₹95,864</div>
+            <div style="color:#475569;">CAS</div>
+          </div>
+          <div class="txn-row">
+            <div style="color:#94a3b8;">1 Apr 2026</div>
+            <div><div style="font-weight:500;">Opening Balance</div><div style="font-size:10px;color:#475569;">All portfolios</div></div>
+            <div><span class="badge badge-yellow">OPEN</span></div>
+            <div>—</div>
+            <div style="font-weight:500;">₹3.84 Cr</div>
+            <div style="color:#475569;">Manual</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 6: ALERTS ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">ALERTS</div><div class="divider-line"></div></div>
+
+        <div class="card">
+          <div class="alert-item alert-red">
+            <div class="alert-dot" style="background:#ef4444;"></div>
+            <div>
+              <div class="alert-title" style="color:#f87171;">PMS Underperformance — Marcellus CCP</div>
+              <div class="alert-body">XIRR 11.2% is 7.2% below Nifty 50 benchmark (18.4%). Portfolio drawdown reached -8.4% in June 2026.</div>
+            </div>
+            <div style="margin-left:auto;font-size:10px;color:#475569;white-space:nowrap;">Today</div>
+          </div>
+          <div class="alert-item alert-yellow">
+            <div class="alert-dot" style="background:#eab308;"></div>
+            <div>
+              <div class="alert-title" style="color:#fde047;">Sector Overexposure — Financial Services</div>
+              <div class="alert-body">Financial Services at 34% of total portfolio. Exceeds 30% threshold. Concentrated across Motilal, ASK, and direct equity.</div>
+            </div>
+            <div style="margin-left:auto;font-size:10px;color:#475569;white-space:nowrap;">Yesterday</div>
+          </div>
+          <div class="alert-item alert-blue">
+            <div class="alert-dot" style="background:#6366f1;"></div>
+            <div>
+              <div class="alert-title" style="color:#a5b4fc;">Reconciliation Flag — Motilal PMS Bank Account</div>
+              <div class="alert-body">₹2,14,000 debit on 8 Jun 2026 has no matching PMS transaction. Please review and link or mark as non-investment.</div>
+            </div>
+            <div style="margin-left:auto;font-size:10px;color:#475569;white-space:nowrap;">2 days ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCREEN 7: DOCUMENTS ═══ -->
+      <div class="screen">
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">DOCUMENTS</div><div class="divider-line"></div></div>
+
+        <div class="card">
+          <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <div style="flex:1;padding:12px 16px;background:rgba(99,102,241,0.08);border:1.5px dashed rgba(99,102,241,0.3);border-radius:10px;text-align:center;cursor:pointer;">
+              <div style="font-size:20px;margin-bottom:4px;">↑</div>
+              <div style="font-size:12px;font-weight:600;color:#818cf8;">Upload Document</div>
+              <div style="font-size:10px;color:#475569;margin-top:2px;">PDF, Excel, scanned · or forward to sharma-family@in.orbitwealth.in</div>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-bottom:10px;">RECENT DOCUMENTS</div>
+          <div class="doc-item">
+            <div class="doc-icon" style="background:rgba(16,185,129,0.1);">📄</div>
+            <div class="doc-info">
+              <div class="doc-name">Motilal_NTDOP_May2026.pdf</div>
+              <div class="doc-meta">PMS Transaction Statement · Uploaded via email · 14 Jun 2026</div>
+            </div>
+            <span class="status-pill status-ingested">Ingested</span>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon" style="background:rgba(234,179,8,0.1);">📊</div>
+            <div class="doc-info">
+              <div class="doc-name">Zerodha_ContractNote_12Jun.pdf</div>
+              <div class="doc-meta">Contract Note · Manual upload · 12 Jun 2026 · 2 transactions</div>
+            </div>
+            <span class="status-pill status-review">Awaiting Review</span>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon" style="background:rgba(99,102,241,0.1);">📋</div>
+            <div class="doc-info">
+              <div class="doc-name">CAMS_CAS_Jun2026.pdf</div>
+              <div class="doc-meta">CAS Statement · Uploaded via email · 10 Jun 2026</div>
+            </div>
+            <span class="status-pill status-processing">Processing</span>
+          </div>
+          <div class="doc-item">
+            <div class="doc-icon" style="background:rgba(239,68,68,0.1);">🏦</div>
+            <div class="doc-info">
+              <div class="doc-name">HDFC_BankStatement_May2026.pdf</div>
+              <div class="doc-meta">Bank Statement (PMS) · Manual upload · 2 Jun 2026 · 1 flag</div>
+            </div>
+            <span class="status-pill status-review">Awaiting Review</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

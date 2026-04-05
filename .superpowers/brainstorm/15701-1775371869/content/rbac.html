@@ -1,0 +1,136 @@
+<h2>ORBIT — RBAC & Multi-Entity Model</h2>
+<p class="subtitle">Section 4 of 5 · Family ownership, entity structure, access control</p>
+
+<div class="section">
+  <h3>Hierarchy</h3>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:0;margin:16px 0;">
+
+    <div style="background:rgba(99,102,241,0.12);border:2px solid #818cf8;border-radius:10px;padding:12px 32px;text-align:center;font-weight:600;font-size:14px;">
+      Family<br><span style="font-size:11px;color:#94a3b8;font-weight:400;">Top-level tenant · e.g. "Sharma Family"</span>
+    </div>
+    <div style="width:2px;height:20px;background:#334155;"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;">
+      <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">Individual</div>
+        <div style="color:#94a3b8;margin-top:2px;">Rajesh Sharma</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">HUF</div>
+        <div style="color:#94a3b8;margin-top:2px;">Rajesh Sharma HUF</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">Company</div>
+        <div style="color:#94a3b8;margin-top:2px;">RS Holdings Pvt Ltd</div>
+      </div>
+      <div style="background:rgba(16,185,129,0.08);border:1.5px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">Trust</div>
+        <div style="color:#94a3b8;margin-top:2px;">Sharma Family Trust</div>
+      </div>
+    </div>
+    <div style="width:2px;height:20px;background:#334155;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:80%;">
+      <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">PMS Portfolio</div>
+        <div style="color:#94a3b8;margin-top:2px;">Motilal · ASK · Marcellus</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">Equity Portfolio</div>
+        <div style="color:#94a3b8;margin-top:2px;">Zerodha · ICICI · HDFC Sec</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px;text-align:center;font-size:12px;">
+        <div style="font-weight:600;">MF Portfolio</div>
+        <div style="color:#94a3b8;margin-top:2px;">CAMS · KFintech CAS</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Roles & Permissions</h3>
+  <div style="overflow-x:auto;margin:12px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.05);">
+          <th style="padding:10px 12px;text-align:left;border-bottom:1px solid #334155;color:#94a3b8;">Permission</th>
+          <th style="padding:10px 12px;text-align:center;border-bottom:1px solid #334155;color:#818cf8;">Owner</th>
+          <th style="padding:10px 12px;text-align:center;border-bottom:1px solid #334155;color:#34d399;">Advisor</th>
+          <th style="padding:10px 12px;text-align:center;border-bottom:1px solid #fbbf24;">CA</th>
+          <th style="padding:10px 12px;text-align:center;border-bottom:1px solid #334155;color:#94a3b8;">Viewer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:9px 12px;">View portfolio & analytics</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;background:rgba(255,255,255,0.02);">
+          <td style="padding:9px 12px;">Upload documents</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:9px 12px;">Review & confirm extractions</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;background:rgba(255,255,255,0.02);">
+          <td style="padding:9px 12px;">Manage entities & portfolios</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:9px 12px;">Invite / remove users</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+        </tr>
+        <tr style="background:rgba(255,255,255,0.02);">
+          <td style="padding:9px 12px;">View audit log</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+          <td style="padding:9px 12px;text-align:center;color:#34d399;">✓</td>
+          <td style="padding:9px 12px;text-align:center;color:#f87171;">✗</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Entity-Scoped Access</h3>
+  <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.2);border-radius:10px;padding:14px;font-size:13px;">
+    Advisors and CAs are granted access per entity, not the whole family. An advisor managing one entity cannot see another entity's portfolio unless explicitly granted.<br><br>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;font-size:12px;">
+      <div style="padding:8px 10px;background:rgba(99,102,241,0.08);border-radius:6px;">
+        <strong>family_user_access</strong><br>
+        <span style="font-family:monospace;color:#94a3b8;">user_id · entity_id · role · granted_by · granted_at</span>
+      </div>
+      <div style="padding:8px 10px;background:rgba(99,102,241,0.08);border-radius:6px;">
+        Owner always has access to all entities.<br>
+        Invited users see only explicitly granted entities.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Inbound Email Routing</h3>
+  <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.2);border-radius:10px;padding:14px;font-size:13px;">
+    Each family gets a dedicated inbound address:<br>
+    <div style="font-family:monospace;font-size:14px;color:#34d399;margin:8px 0;">sharma-family@in.orbitwealth.in</div>
+    Any authorised user (owner / advisor / CA) can forward statements to this address. Postmark parses the email, extracts attachments, and routes to the correct ingestion job. Sender email validated against <code>users</code> table — unknown senders rejected.
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this look right? Confirm for Section 5: Dashboard & Presentation Layer</p>

@@ -1,0 +1,144 @@
+<h2>ORBIT — Data Model & Event Schema</h2>
+<p class="subtitle">Section 2 of 5 · Event store + projections + staging layer</p>
+
+<div class="section">
+  <h3>Core Tables</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">
+
+    <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#818cf8;">families</div>
+      <div style="font-size:12px;font-family:monospace;margin-top:8px;line-height:2;">
+        <span style="color:#f87171;">id</span> uuid PK<br>
+        <span style="color:#94a3b8;">name</span> text<br>
+        <span style="color:#94a3b8;">created_at</span> timestamptz
+      </div>
+    </div>
+
+    <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#818cf8;">users</div>
+      <div style="font-size:12px;font-family:monospace;margin-top:8px;line-height:2;">
+        <span style="color:#f87171;">id</span> uuid PK<br>
+        <span style="color:#fbbf24;">family_id</span> uuid FK<br>
+        <span style="color:#94a3b8;">email</span> text UNIQUE<br>
+        <span style="color:#34d399;">role</span> enum(owner,advisor,ca,viewer)<br>
+        <span style="color:#94a3b8;">2fa_enabled</span> bool
+      </div>
+    </div>
+
+    <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#818cf8;">entities</div>
+      <div style="font-size:12px;font-family:monospace;margin-top:8px;line-height:2;">
+        <span style="color:#f87171;">id</span> uuid PK<br>
+        <span style="color:#fbbf24;">family_id</span> uuid FK<br>
+        <span style="color:#94a3b8;">name</span> text<br>
+        <span style="color:#34d399;">type</span> enum(individual,huf,company,trust)<br>
+        <span style="color:#94a3b8;">pan</span> text<br>
+        <span style="color:#94a3b8;">created_at</span> timestamptz
+      </div>
+    </div>
+
+    <div style="background:rgba(99,102,241,0.06);border:1.5px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px;">
+      <div class="label" style="color:#818cf8;">portfolios</div>
+      <div style="font-size:12px;font-family:monospace;margin-top:8px;line-height:2;">
+        <span style="color:#f87171;">id</span> uuid PK<br>
+        <span style="color:#fbbf24;">entity_id</span> uuid FK<br>
+        <span style="color:#34d399;">type</span> enum(pms,equity,mf)<br>
+        <span style="color:#94a3b8;">provider_name</span> text<br>
+        <span style="color:#94a3b8;">account_number</span> text<br>
+        <span style="color:#94a3b8;">opened_on</span> date
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>Event Store (append-only, never updated)</h3>
+  <div style="background:rgba(245,158,11,0.06);border:1.5px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px;margin:12px 0;">
+    <div class="label" style="color:#fbbf24;">portfolio_events</div>
+    <div style="font-size:12px;font-family:monospace;margin-top:8px;line-height:2;">
+      <span style="color:#f87171;">id</span> uuid PK<br>
+      <span style="color:#fbbf24;">portfolio_id</span> uuid FK<br>
+      <span style="color:#34d399;">event_type</span> enum — see below<br>
+      <span style="color:#c084fc;">payload</span> jsonb &nbsp;← all event-specific fields live here<br>
+      <span style="color:#94a3b8;">version</span> int &nbsp;← per-portfolio sequence, enables conflict detection<br>
+      <span style="color:#94a3b8;">event_date</span> date &nbsp;← business date (trade date, not insert date)<br>
+      <span style="color:#94a3b8;">created_at</span> timestamptz<br>
+      <span style="color:#fbbf24;">ingestion_id</span> uuid FK &nbsp;← traces back to source document<br>
+      <span style="color:#94a3b8;">created_by</span> uuid FK → users
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;font-size:12px;">
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">SecurityBought</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">SecuritySold</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">DividendReceived</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">MFUnitsPurchased</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">MFUnitsRedeemed</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">OpeningBalanceSet</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">PMSSnapshotRecorded</div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">CorporateActionApplied <span style="color:#64748b;">(P2)</span></div>
+    <div style="padding:8px 10px;background:rgba(245,158,11,0.08);border-radius:6px;font-family:monospace;">PriceUpdated</div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Read Projections (rebuilt from events)</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0;font-size:12px;">
+    <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#f87171;">holdings</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;">
+        portfolio_id<br>isin<br>security_name<br>quantity<br>avg_cost<br>current_price<br>current_value<br>unrealised_pnl<br>as_of timestamptz
+      </div>
+    </div>
+    <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#f87171;">performance_metrics</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;">
+        portfolio_id<br>xirr<br>cagr<br>abs_return_pct<br>total_invested<br>current_value<br>realised_pnl<br>unrealised_pnl<br>as_of timestamptz
+      </div>
+    </div>
+    <div style="background:rgba(239,68,68,0.06);border:1.5px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#f87171;">allocation_snapshot</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;">
+        entity_id<br>asset_class<br>sector<br>isin<br>weight_pct<br>value<br>as_of timestamptz
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Ingestion Staging Layer</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;font-size:12px;">
+    <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#34d399;">documents</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;">
+        id uuid PK<br>
+        entity_id FK<br>
+        portfolio_id FK (nullable)<br>
+        source enum(email,upload)<br>
+        doc_type enum(pms,contract_note,cas,bank)<br>
+        storage_path text<br>
+        status enum(pending,processing,reviewed,ingested,failed)<br>
+        uploaded_at timestamptz
+      </div>
+    </div>
+    <div style="background:rgba(16,185,129,0.06);border:1.5px solid rgba(16,185,129,0.25);border-radius:10px;padding:12px;">
+      <div class="label" style="color:#34d399;">staged_extractions</div>
+      <div style="font-family:monospace;line-height:2;margin-top:6px;">
+        id uuid PK<br>
+        document_id FK<br>
+        extracted_data jsonb<br>
+        confidence_score float<br>
+        review_status enum(pending,approved,rejected)<br>
+        reviewed_by uuid FK<br>
+        reviewed_at timestamptz
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:12px;font-size:13px;margin-top:4px;">
+  <strong>Prices table</strong> — <span style="font-family:monospace;">prices(isin, price, source, fetched_at)</span> — append-only time series. Motilal API writes here every 15 min. Projections JOIN on latest price per ISIN.
+</div>
+
+<p class="subtitle" style="margin-top:20px;">Does this data model look right? Confirm to see Section 3: AI Ingestion Pipeline</p>
