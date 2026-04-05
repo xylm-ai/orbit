@@ -2,7 +2,7 @@ import uuid
 import asyncio
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, Float
 from sqlalchemy.orm.attributes import flag_modified
 from app.worker import celery_app
 from app.tasks._db import task_db_session
@@ -50,14 +50,16 @@ async def _check_duplicate(db: AsyncSession, portfolio_id: uuid.UUID, row: dict)
     amount = row.get("amount")
     if not (event_date and amount):
         return False
+    conditions = [
+        PortfolioEvent.portfolio_id == portfolio_id,
+        PortfolioEvent.event_date == event_date,
+        PortfolioEvent.payload["amount"].astext.cast(Float) == amount,
+    ]
+    if isin:
+        conditions.append(PortfolioEvent.payload["isin"].astext == isin)
+
     result = await db.execute(
-        select(PortfolioEvent).where(
-            and_(
-                PortfolioEvent.portfolio_id == portfolio_id,
-                PortfolioEvent.event_date == event_date,
-                PortfolioEvent.payload["amount"].cast(float) == amount,
-            )
-        ).limit(1)
+        select(PortfolioEvent).where(and_(*conditions)).limit(1)
     )
     return result.scalar() is not None
 

@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import APIRouter, Depends, HTTPException
@@ -147,7 +147,7 @@ async def confirm_extraction(
 
     extraction.review_status = ReviewStatus.approved
     extraction.reviewed_by = user.id
-    extraction.reviewed_at = datetime.utcnow()
+    extraction.reviewed_at = datetime.now(timezone.utc)
     doc.status = DocumentStatus.ingested
     await db.commit()
 
@@ -171,7 +171,7 @@ async def reject_extraction(
     doc = await db.get(Document, extraction.document_id)
     extraction.review_status = ReviewStatus.rejected
     extraction.reviewed_by = user.id
-    extraction.reviewed_at = datetime.utcnow()
+    extraction.reviewed_at = datetime.now(timezone.utc)
     doc.status = DocumentStatus.failed
     doc.failure_reason = body.reason[:500] if body.reason else "Rejected by user"
     await db.commit()
