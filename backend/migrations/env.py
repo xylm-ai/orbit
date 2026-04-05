@@ -8,7 +8,11 @@ import app.models  # noqa: F401 — registers all models with Base
 
 config = context.config
 if config.config_file_name:
-    fileConfig(config.config_file_name)
+    import configparser
+    _cp = configparser.ConfigParser()
+    _cp.read(config.config_file_name)
+    if _cp.has_section("formatters"):
+        fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 
