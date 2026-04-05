@@ -1,7 +1,7 @@
 import pytest
 
 async def _setup(client, email: str):
-    res = await client.post("/auth/register", json={"family_name": "PF Family", "email": email, "password": "pass"})
+    res = await client.post("/auth/register", json={"family_name": "PF Family", "email": email, "password": "pass1234"})
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     entity = await client.post("/entities", json={"name": "Raj", "type": "individual"}, headers=headers)

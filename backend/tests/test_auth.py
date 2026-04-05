@@ -14,7 +14,7 @@ async def test_register_creates_owner(client):
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client):
-    payload = {"family_name": "Test Family", "email": "dup@example.com", "password": "pass"}
+    payload = {"family_name": "Test Family", "email": "dup@example.com", "password": "pass1234"}
     await client.post("/auth/register", json=payload)
     response = await client.post("/auth/register", json=payload)
     assert response.status_code == 400
@@ -38,11 +38,11 @@ async def test_login_wrong_password(client):
     await client.post("/auth/register", json={
         "family_name": "Family X",
         "email": "wrongpass@example.com",
-        "password": "correct",
+        "password": "correct12",
     })
     response = await client.post("/auth/login", json={
         "email": "wrongpass@example.com",
-        "password": "wrong",
+        "password": "wrong123",
     })
     assert response.status_code == 401
 
@@ -51,7 +51,7 @@ async def test_2fa_setup_and_verify(client):
     reg = await client.post("/auth/register", json={
         "family_name": "2FA Family",
         "email": "totp@example.com",
-        "password": "pass123",
+        "password": "pass1234",
     })
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -70,7 +70,7 @@ async def test_login_requires_2fa_after_setup(client):
     reg = await client.post("/auth/register", json={
         "family_name": "2FA Required",
         "email": "needstotp@example.com",
-        "password": "pass123",
+        "password": "pass1234",
     })
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -81,12 +81,12 @@ async def test_login_requires_2fa_after_setup(client):
     code = pyotp.TOTP(secret).now()
     await client.post("/auth/2fa/verify", json={"totp_code": code}, headers=headers)
 
-    no_code = await client.post("/auth/login", json={"email": "needstotp@example.com", "password": "pass123"})
+    no_code = await client.post("/auth/login", json={"email": "needstotp@example.com", "password": "pass1234"})
     assert no_code.status_code == 401
 
     with_code = await client.post("/auth/login", json={
         "email": "needstotp@example.com",
-        "password": "pass123",
+        "password": "pass1234",
         "totp_code": pyotp.TOTP(secret).now(),
     })
     assert with_code.status_code == 200

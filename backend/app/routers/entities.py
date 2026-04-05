@@ -30,7 +30,7 @@ async def list_entities(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models import FamilyUserAccess
-    from sqlalchemy import union_all
+    from sqlalchemy import union
 
     # Own-family entities (owners only)
     own_family_ids = (
@@ -42,7 +42,7 @@ async def list_entities(
     granted_ids = select(FamilyUserAccess.entity_id).where(FamilyUserAccess.user_id == user.id)
 
     result = await db.execute(
-        select(Entity).where(Entity.id.in_(union_all(own_family_ids, granted_ids)))
+        select(Entity).where(Entity.id.in_(union(own_family_ids, granted_ids)))
     )
     return result.scalars().all()
 

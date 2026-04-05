@@ -1,7 +1,7 @@
 import pytest
 
 async def _register_and_token(client, email: str, family: str = "Test Family") -> str:
-    res = await client.post("/auth/register", json={"family_name": family, "email": email, "password": "pass"})
+    res = await client.post("/auth/register", json={"family_name": family, "email": email, "password": "pass1234"})
     return res.json()["access_token"]
 
 @pytest.mark.asyncio

@@ -11,15 +11,18 @@ router = APIRouter(prefix="/entities/{entity_id}/portfolios", tags=["portfolios"
 
 async def _get_entity_or_403(entity_id: uuid.UUID, user: User, db: AsyncSession) -> Entity:
     entity = await db.get(Entity, entity_id)
-    if not entity or entity.family_id != user.family_id:
+    if not entity:
         raise HTTPException(status_code=404, detail="Entity not found")
-    if user.role != UserRole.owner:
-        access = await db.scalar(
-            select(FamilyUserAccess)
-            .where(FamilyUserAccess.user_id == user.id, FamilyUserAccess.entity_id == entity_id)
-        )
-        if not access:
-            raise HTTPException(status_code=403, detail="Access denied")
+    # Same-family owner: admit immediately
+    if entity.family_id == user.family_id and user.role == UserRole.owner:
+        return entity
+    # Check entity-scoped access grant (covers same-family non-owners AND cross-family invites)
+    access = await db.scalar(
+        select(FamilyUserAccess)
+        .where(FamilyUserAccess.user_id == user.id, FamilyUserAccess.entity_id == entity_id)
+    )
+    if not access:
+        raise HTTPException(status_code=403, detail="Access denied")
     return entity
 
 @router.post("", response_model=PortfolioResponse, status_code=201)

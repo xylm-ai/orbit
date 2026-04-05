@@ -2,7 +2,7 @@ import pytest
 
 async def _owner_setup(client, suffix: str):
     email = f"owner-{suffix}@test.com"
-    res = await client.post("/auth/register", json={"family_name": f"Family {suffix}", "email": email, "password": "pass"})
+    res = await client.post("/auth/register", json={"family_name": f"Family {suffix}", "email": email, "password": "pass1234"})
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     entity = await client.post("/entities", json={"name": "Entity", "type": "individual"}, headers=headers)
@@ -10,7 +10,7 @@ async def _owner_setup(client, suffix: str):
 
 async def _second_user(client, suffix: str):
     email = f"advisor-{suffix}@test.com"
-    res = await client.post("/auth/register", json={"family_name": f"Advisor Family {suffix}", "email": email, "password": "pass"})
+    res = await client.post("/auth/register", json={"family_name": f"Advisor Family {suffix}", "email": email, "password": "pass1234"})
     return res.json()["access_token"], email
 
 @pytest.mark.asyncio
