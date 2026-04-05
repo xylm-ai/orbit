@@ -23,6 +23,7 @@ dependencies = [
     "pdf2image>=1.17",
     "openai>=1.30",
     "yfinance>=0.2",
+    "pyxirr>=0.10",
     "python-multipart>=0.0.9",
 ]
 
