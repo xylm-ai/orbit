@@ -129,6 +129,20 @@ GET  /entities/{id}/portfolios       List portfolios
 POST /entities/{id}/portfolios       Create portfolio (owner only)
 ```
 
+### Documents & Ingestion
+```
+POST /documents                      Upload document (PDF, Excel, image)
+GET  /documents                      List documents for accessible entities
+GET  /documents/{id}/status          Document processing status
+GET  /documents/{id}/extraction      Get extraction ID for a document
+POST /documents/inbound-email        Postmark inbound webhook
+
+GET  /extractions/{id}/review        Staged extraction rows with confidence scores
+PUT  /extractions/{id}/rows/{n}      Inline-edit a single extracted row
+POST /extractions/{id}/confirm       Write approved rows as portfolio events
+POST /extractions/{id}/reject        Reject extraction, no events written
+```
+
 ### Dashboard
 ```
 GET  /dashboard/summary              Net worth, allocation, entity breakdown
@@ -160,16 +174,18 @@ Access is **entity-scoped** — an advisor granted access to one entity cannot s
 orbit/
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, access)
-│   │   ├── routers/         # FastAPI routers (auth, entities, portfolios, dashboard)
+│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, document, extraction)
+│   │   ├── routers/         # FastAPI routers (auth, entities, portfolios, documents, extractions)
 │   │   ├── schemas/         # Pydantic v2 request/response models
-│   │   ├── services/        # Business logic (auth, event appending)
+│   │   ├── services/        # Business logic (auth, event appending, S3 storage)
+│   │   ├── tasks/           # Celery pipeline tasks (classify→preprocess→extract→normalize→stage)
+│   │   ├── worker.py        # Celery app instance
 │   │   ├── config.py        # pydantic-settings environment config
 │   │   ├── database.py      # Async SQLAlchemy engine + session factory
 │   │   ├── deps.py          # FastAPI dependencies (current_user)
-│   │   └── main.py          # FastAPI app + CORS + router registration
+│   │   └── main.py          # FastAPI app + router registration
 │   ├── migrations/          # Alembic async migrations
-│   ├── tests/               # pytest-asyncio test suite (17 tests)
+│   ├── tests/               # pytest-asyncio test suite (36 tests)
 │   ├── seed.py              # Demo data seeder
 │   └── pyproject.toml
 ├── frontend/
@@ -204,23 +220,18 @@ pytest tests/ -v
 ```
 
 ```
-tests/test_auth.py::test_register_creates_owner          PASSED
-tests/test_auth.py::test_login_success                   PASSED
-tests/test_auth.py::test_2fa_setup_and_verify            PASSED
-tests/test_auth.py::test_login_requires_2fa_after_setup  PASSED
-tests/test_entities.py::test_owner_can_create_entity     PASSED
-tests/test_entities.py::test_owner_sees_own_entities     PASSED
-tests/test_portfolios.py::test_create_pms_portfolio      PASSED
-tests/test_portfolios.py::test_list_portfolios           PASSED
-tests/test_access.py::test_owner_can_invite_advisor      PASSED
-tests/test_access.py::test_invited_advisor_sees_entity   PASSED
-tests/test_access.py::test_non_owner_cannot_invite       PASSED
-tests/test_events.py::test_append_event_increments_version  PASSED
-tests/test_events.py::test_get_events_returns_ordered    PASSED
-tests/test_events.py::test_events_are_never_duplicated   PASSED
-tests/test_health.py::test_health                        PASSED
+tests/test_auth.py            PASSED  (4 tests — register, login, 2FA)
+tests/test_entities.py        PASSED  (2 tests — CRUD, access)
+tests/test_portfolios.py      PASSED  (2 tests — create, list)
+tests/test_access.py          PASSED  (3 tests — invite, RBAC)
+tests/test_events.py          PASSED  (3 tests — append, version, dedupe)
+tests/test_storage.py         PASSED  (1 test  — S3 upload + presigned URL)
+tests/test_pipeline.py        PASSED  (6 tests — classify, preprocess, extract, normalize, stage)
+tests/test_upload.py          PASSED  (4 tests — upload RBAC, file type, list)
+tests/test_review.py          PASSED  (5 tests — review, edit, confirm, reject)
+tests/test_postmark.py        PASSED  (3 tests — valid sender, bad token, unknown sender)
 
-17 passed in 5.67s
+36 passed
 ```
 
 ---
@@ -230,8 +241,8 @@ tests/test_health.py::test_health                        PASSED
 | Plan | Status | Scope |
 |---|---|---|
 | **Plan 1 — Foundation** | ✅ Complete | Data model, auth, RBAC, event store, dashboard shell |
-| **Plan 2 — AI Ingestion** | 🔜 Next | Document upload, Postmark email, Celery workers, GPT-4o extraction, staging review UI |
-| **Plan 3 — Portfolio Engine** | 🔜 | XIRR/CAGR projections, Motilal price feed (15 min), WebSocket live prices, bank reconciliation |
+| **Plan 2 — AI Ingestion** | ✅ Complete | Document upload, Postmark email, Celery workers, GPT-4o extraction, staging review UI |
+| **Plan 3 — Portfolio Engine** | 🔜 Next | XIRR/CAGR projections, Motilal price feed (15 min), WebSocket live prices, bank reconciliation |
 | **Plan 4 — Dashboard** | 🔜 | All 7 screens wired to real projections, alerts engine, sector heatmaps |
 
 ---
@@ -240,11 +251,25 @@ tests/test_health.py::test_health                        PASSED
 
 ```bash
 # backend/.env
+
+# Core
 DATABASE_URL=postgresql+asyncpg://orbit:orbit@localhost:5432/orbit
 REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=change-me-in-production
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ENVIRONMENT=development
+
+# S3 document storage (Plan 2)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=ap-south-1
+S3_BUCKET_NAME=orbit-documents
+
+# AI extraction (Plan 2)
+OPENAI_API_KEY=sk-...
+
+# Postmark inbound email (Plan 2)
+POSTMARK_INBOUND_TOKEN=your-postmark-token
 ```
 
 ---
