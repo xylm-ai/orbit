@@ -6,6 +6,11 @@ from app.models.access import FamilyUserAccess
 from app.models.event import PortfolioEvent, EventType
 from app.models.document import Document, DocumentSource, DocType, DocumentStatus
 from app.models.extraction import StagedExtraction, ReviewStatus
+from app.models.security import Security
+from app.models.price import Price
+from app.models.holding import Holding
+from app.models.performance import PerformanceMetrics
+from app.models.allocation import AllocationSnapshot
 
 __all__ = [
     "Family", "User", "UserRole",
@@ -15,4 +20,5 @@ __all__ = [
     "PortfolioEvent", "EventType",
     "Document", "DocumentSource", "DocType", "DocumentStatus",
     "StagedExtraction", "ReviewStatus",
+    "Security", "Price", "Holding", "PerformanceMetrics", "AllocationSnapshot",
 ]
