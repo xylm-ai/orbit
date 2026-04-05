@@ -47,6 +47,19 @@ Family
 
 Each `Family` has one or more `Entities`. Each `Entity` has one or more `Portfolios`. All financial activity is recorded as immutable events on a portfolio. Projections — current holdings, P&L, allocation — are derived views computed from the event stream.
 
+### Projection Engine
+
+Every time a user confirms an extraction, the event store is replayed to rebuild read models:
+
+```
+PortfolioEvents (append-only)
+    → rebuild_portfolio()       →  holdings (WAC cost basis, unrealised P&L)
+                                →  performance_metrics (XIRR via pyxirr, CAGR, abs return)
+    → rebuild_entity_allocation → allocation_snapshots (weight % by security, sector)
+```
+
+A Celery Beat task runs every 15 minutes, fetches NSE prices via yfinance, updates current values in `holdings` and `performance_metrics`, and publishes a `orbit:prices` message to Redis — which the WebSocket endpoint forwards to connected browser clients in real time.
+
 ### AI Ingestion Pipeline
 
 ```
@@ -72,7 +85,7 @@ The pipeline runs as a Celery chain. Each stage is idempotent and retries indepe
 | AI Extraction | GPT-4o (OpenAI API) · pdfplumber · Tesseract OCR |
 | Email Ingestion | Postmark Inbound |
 | File Storage | S3-compatible object storage |
-| Price Feed | Motilal Oswal API (every 15 min) |
+| Price Feed | yfinance · NSE tickers (every 15 min via Celery Beat) |
 | Auth | JWT · TOTP 2FA (pyotp) · bcrypt |
 
 ---
@@ -161,11 +174,12 @@ POST /auth/2fa/verify        Enable 2FA on account
 
 ### Entities & Portfolios
 ```
-GET  /entities                       List accessible entities
-POST /entities                       Create entity (owner only)
-POST /entities/{id}/invite           Invite user with role
-GET  /entities/{id}/portfolios       List portfolios
-POST /entities/{id}/portfolios       Create portfolio (owner only)
+GET  /entities                                           List accessible entities
+POST /entities                                           Create entity (owner only)
+POST /entities/{id}/invite                               Invite user with role
+GET  /entities/{id}/portfolios                           List portfolios
+POST /entities/{id}/portfolios                           Create portfolio (owner only)
+POST /entities/{id}/portfolios/{pid}/opening-balance     Set opening balance (owner only, idempotent)
 ```
 
 ### Documents & Ingestion
@@ -184,10 +198,15 @@ POST /extractions/{id}/reject        Reject extraction, no events written
 
 ### Dashboard
 ```
-GET  /dashboard/summary              Net worth, allocation, entity breakdown
-GET  /dashboard/holdings/{type}      Holdings by asset class (pms|equity|mf)
-GET  /dashboard/transactions         Unified transaction ledger
+GET  /dashboard/summary              Net worth, allocation, entity breakdown (with XIRR/CAGR)
+GET  /dashboard/holdings/{type}      Holdings by asset class (pms|equity|mf) with live P&L
+GET  /dashboard/transactions         Unified transaction ledger (paginated)
 GET  /dashboard/alerts               Reconciliation flags + system alerts
+```
+
+### WebSocket
+```
+WS   /portfolio/live?token=<jwt>     Live price updates (Redis pub/sub, publishes on every price fetch)
 ```
 
 ---
@@ -213,18 +232,18 @@ Access is **entity-scoped** — an advisor granted access to one entity cannot s
 orbit/
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, document, extraction)
-│   │   ├── routers/         # FastAPI routers (auth, entities, portfolios, documents, extractions)
+│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, document, extraction, security, price, holding, performance, allocation)
+│   │   ├── routers/         # FastAPI routers (auth, entities, portfolios, documents, extractions, dashboard, ws)
 │   │   ├── schemas/         # Pydantic v2 request/response models
-│   │   ├── services/        # Business logic (auth, event appending, S3 storage)
-│   │   ├── tasks/           # Celery pipeline tasks (classify→preprocess→extract→normalize→stage)
-│   │   ├── worker.py        # Celery app instance
+│   │   ├── services/        # Business logic (auth, event appending, S3 storage, projections, reconciliation)
+│   │   ├── tasks/           # Celery pipeline tasks (classify→preprocess→extract→normalize→stage) + price feed
+│   │   ├── worker.py        # Celery app instance + Beat schedule (price feed every 15 min)
 │   │   ├── config.py        # pydantic-settings environment config
 │   │   ├── database.py      # Async SQLAlchemy engine + session factory
 │   │   ├── deps.py          # FastAPI dependencies (current_user)
 │   │   └── main.py          # FastAPI app + router registration
 │   ├── migrations/          # Alembic async migrations
-│   ├── tests/               # pytest-asyncio test suite (36 tests)
+│   ├── tests/               # pytest-asyncio test suite (52 tests)
 │   ├── seed.py              # Demo data seeder
 │   └── pyproject.toml
 ├── frontend/
@@ -259,18 +278,23 @@ pytest tests/ -v
 ```
 
 ```
-tests/test_auth.py            PASSED  (4 tests — register, login, 2FA)
-tests/test_entities.py        PASSED  (2 tests — CRUD, access)
-tests/test_portfolios.py      PASSED  (2 tests — create, list)
-tests/test_access.py          PASSED  (3 tests — invite, RBAC)
-tests/test_events.py          PASSED  (3 tests — append, version, dedupe)
-tests/test_storage.py         PASSED  (1 test  — S3 upload + presigned URL)
-tests/test_pipeline.py        PASSED  (6 tests — classify, preprocess, extract, normalize, stage)
-tests/test_upload.py          PASSED  (4 tests — upload RBAC, file type, list)
-tests/test_review.py          PASSED  (5 tests — review, edit, confirm, reject)
-tests/test_postmark.py        PASSED  (3 tests — valid sender, bad token, unknown sender)
+tests/test_auth.py              PASSED  (4 tests — register, login, 2FA)
+tests/test_entities.py          PASSED  (2 tests — CRUD, access)
+tests/test_portfolios.py        PASSED  (2 tests — create, list)
+tests/test_access.py            PASSED  (3 tests — invite, RBAC)
+tests/test_events.py            PASSED  (3 tests — append, version, dedupe)
+tests/test_storage.py           PASSED  (1 test  — S3 upload + presigned URL)
+tests/test_pipeline.py          PASSED  (6 tests — classify, preprocess, extract, normalize, stage)
+tests/test_upload.py            PASSED  (4 tests — upload RBAC, file type, list)
+tests/test_review.py            PASSED  (5 tests — review, edit, confirm, reject)
+tests/test_postmark.py          PASSED  (3 tests — valid sender, bad token, unknown sender)
+tests/test_opening_balance.py   PASSED  (4 tests — set, duplicate 409, RBAC)
+tests/test_projections.py       PASSED  (4 tests — holdings, performance, allocation, price update)
+tests/test_reconciliation.py    PASSED  (4 tests — match, mismatch flag, tolerance, idempotent)
+tests/test_dashboard.py         PASSED  (6 tests — summary, holdings by type, transactions, alerts, RBAC)
+tests/test_websocket.py         PASSED  (2 tests — connect auth, price message)
 
-36 passed
+52 passed
 ```
 
 ---
@@ -281,8 +305,8 @@ tests/test_postmark.py        PASSED  (3 tests — valid sender, bad token, unkn
 |---|---|---|
 | **Plan 1 — Foundation** | ✅ Complete | Data model, auth, RBAC, event store, dashboard shell |
 | **Plan 2 — AI Ingestion** | ✅ Complete | Document upload, Postmark email, Celery workers, GPT-4o extraction, staging review UI |
-| **Plan 3 — Portfolio Engine** | 🔜 Next | XIRR/CAGR projections, Motilal price feed (15 min), WebSocket live prices, bank reconciliation |
-| **Plan 4 — Dashboard** | 🔜 | All 7 screens wired to real projections, alerts engine, sector heatmaps |
+| **Plan 3 — Portfolio Engine** | ✅ Complete | Projection engine (XIRR/CAGR/WAC), yfinance price feed (15 min), WebSocket live prices, bank reconciliation |
+| **Plan 4 — Dashboard** | 🔜 Next | All 7 screens wired to real projections, alerts engine, sector heatmaps |
 
 ---
 
