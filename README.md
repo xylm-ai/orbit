@@ -254,11 +254,10 @@ ENVIRONMENT=development
 Each family gets a dedicated inbound address:
 
 ```
-<slug>@in.orbitwealth.in
+<slug>@<email_domain>
 ```
 
-Forward any broker statement, PMS report, or CAS to this address. ORBIT classifies, extracts, and queues it for your review. Sender email is validated against the `users` table — unknown senders are rejected.
-
+Forward any broker statement, PMS report, or CAS to this address. ORBIT classifies, extracts, and queues it for your review. Sender email is validated against the `users` table — unknown senders are rejected. 
 ---
 
 ## License
