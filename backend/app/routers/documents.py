@@ -104,6 +104,28 @@ async def list_documents(
     return result.scalars().all()
 
 
+@router.get("/{document_id}/extraction")
+async def get_document_extraction(
+    document_id: uuid.UUID,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import select as sa_select
+    from app.models.extraction import StagedExtraction
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    accessible = await _get_accessible_entity_ids(user, db)
+    if doc.entity_id not in accessible:
+        raise HTTPException(status_code=403, detail="No access to this document")
+    extraction = await db.scalar(
+        sa_select(StagedExtraction).where(StagedExtraction.document_id == document_id)
+    )
+    if not extraction:
+        raise HTTPException(status_code=404, detail="No extraction for this document")
+    return {"extraction_id": str(extraction.id)}
+
+
 @router.get("/{document_id}/status", response_model=DocumentResponse)
 async def get_document_status(
     document_id: uuid.UUID,
