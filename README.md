@@ -1,6 +1,29 @@
 # ORBIT — Wealth Intelligence Platform
 
-> Event-sourced investment intelligence for HNIs and family offices. Consolidates PMS, direct equity, and mutual fund portfolios across multiple entities — with an AI-driven document ingestion pipeline.
+> Institutional-grade investment intelligence for high-net-worth individuals, family offices, and their advisors. ORBIT consolidates PMS accounts, direct equity holdings, and mutual fund portfolios across multiple legal entities — and automatically ingests broker statements, contract notes, and CAS documents using an AI extraction pipeline.
+
+---
+
+## What is ORBIT?
+
+Managing wealth across multiple entities — an individual account, a spouse's HUF, a family trust, a holding company — means dealing with dozens of broker portals, monthly PDF statements, PMS reports arriving by email, and a CA who needs read-only access without seeing everything. Most families solve this with Excel. ORBIT replaces that.
+
+**ORBIT gives you:**
+
+- **A single view of net worth** across every entity your family controls, broken down by asset class, sector, and individual holding.
+- **Automatic document ingestion** — forward a broker statement or CAS to your family's dedicated email address and ORBIT's AI pipeline extracts, normalizes, and stages the transactions for your review. You confirm; only then do events get written to the ledger.
+- **An immutable audit trail** — the event store is append-only. No record is ever updated or deleted. Every correction is a new compensating event. You can rebuild every projection from scratch at any time.
+- **Entity-scoped access control** — invite your CA, advisor, or family member with a specific role. An advisor granted access to one entity cannot see another entity's portfolio.
+- **Bank reconciliation** — PMS cash entries are matched against expected transaction events. Mismatches surface as reconciliation flags.
+
+### Who is it for?
+
+| User | How they use ORBIT |
+|---|---|
+| HNI / Family principal | Full view of family net worth; confirms AI-extracted transactions |
+| Portfolio advisor | Reviews holdings and performance for entities they manage |
+| Chartered Accountant | Reads transaction ledger and audit log for tax work |
+| Family member (viewer) | Read-only view of their own entity's portfolio |
 
 ---
 
@@ -13,12 +36,28 @@ Email / Upload        Celery Workers     PostgreSQL         Read models       Ne
 
 **Core principle:** AI never writes directly to the event store. Extracted data lands in a staging table. User confirms → events committed. The event store is append-only and is the single source of truth.
 
+### Data Hierarchy
+
 ```
 Family
 └── Entities  (Individual / HUF / Company / Trust)
     └── Portfolios  (PMS / Direct Equity / Mutual Funds)
         └── Events  (SecurityBought, DividendReceived, MFUnitsPurchased, …)
 ```
+
+Each `Family` has one or more `Entities`. Each `Entity` has one or more `Portfolios`. All financial activity is recorded as immutable events on a portfolio. Projections — current holdings, P&L, allocation — are derived views computed from the event stream.
+
+### AI Ingestion Pipeline
+
+```
+classify_document
+    → preprocess_document      (pdfplumber / Tesseract OCR)
+    → extract_with_llm         (GPT-4o, structured prompts per doc type)
+    → normalize_extraction     (ISIN lookup, date parsing, duplicate detection)
+    → stage_extraction         (lands in staged_extractions, status → awaiting_review)
+```
+
+The pipeline runs as a Celery chain. Each stage is idempotent and retries independently (3× with exponential backoff). If a stage fails after 3 retries, the document is marked `failed` and the user is notified.
 
 ---
 
@@ -197,16 +236,16 @@ orbit/
 │   │   │   ├── mf/              # Mutual Funds — scheme holdings
 │   │   │   ├── transactions/    # Unified transaction ledger
 │   │   │   ├── alerts/          # Reconciliation flags + thresholds
-│   │   │   └── documents/       # Upload widget + inbound email
+│   │   │   └── documents/       # Upload widget + inbound email + review queue
 │   │   └── login/           # Login page with progressive 2FA reveal
 │   ├── components/          # Sidebar, Topbar
 │   ├── lib/                 # apiFetch wrapper, auth helpers
 │   └── middleware.ts        # Cookie-based auth guard
 ├── docs/
 │   └── superpowers/
-│       ├── specs/           # Design specification
+│       ├── specs/           # Design specifications
 │       └── plans/           # Implementation plans
-└── docker-compose.yml       # Postgres 16 + Redis 7
+└── docker-compose.yml       # Postgres 16 + Redis 7 + Celery worker
 ```
 
 ---
@@ -259,16 +298,16 @@ SECRET_KEY=change-me-in-production
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ENVIRONMENT=development
 
-# S3 document storage (Plan 2)
+# S3 document storage
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 AWS_REGION=ap-south-1
 S3_BUCKET_NAME=orbit-documents
 
-# AI extraction (Plan 2)
+# AI extraction
 OPENAI_API_KEY=sk-...
 
-# Postmark inbound email (Plan 2)
+# Postmark inbound email
 POSTMARK_INBOUND_TOKEN=your-postmark-token
 ```
 
@@ -283,6 +322,19 @@ Each family gets a dedicated inbound address:
 ```
 
 Forward any broker statement, PMS report, or CAS to this address. ORBIT classifies, extracts, and queues it for your review. Sender email is validated against the `users` table — unknown senders are rejected. 
+---
+
+## Disclaimer
+
+**This software is a work in progress and is not suitable for production use in its current state.**
+
+- ORBIT does not provide financial advice. Portfolio data, valuations, and analytics displayed are for informational purposes only.
+- All investment decisions remain the sole responsibility of the user.
+- Price data sourced from third-party APIs may be delayed or inaccurate. Always verify against your broker or depository.
+- The AI extraction pipeline (GPT-4o) may misread or misclassify document contents. Every extracted transaction is staged for human review before being committed. Users are responsible for verifying extracted data before confirming.
+
+**Built with AI assistance (vibe coding):** This codebase was designed and implemented with significant assistance from Claude (Anthropic), an AI coding assistant, using an AI-driven development workflow. The architecture decisions, code structure, and implementation were produced through iterative human-AI collaboration — the developer directed intent and reviewed outputs; Claude wrote the majority of the code. This approach accelerates development but means the codebase should be reviewed carefully before any production deployment, security audit, or use with real financial data.
+
 ---
 
 ## License
