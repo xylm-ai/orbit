@@ -45,3 +45,48 @@ async def test_login_wrong_password(client):
         "password": "wrong",
     })
     assert response.status_code == 401
+
+@pytest.mark.asyncio
+async def test_2fa_setup_and_verify(client):
+    reg = await client.post("/auth/register", json={
+        "family_name": "2FA Family",
+        "email": "totp@example.com",
+        "password": "pass123",
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    setup = await client.post("/auth/2fa/setup", headers=headers)
+    assert setup.status_code == 200
+    secret = setup.json()["secret"]
+
+    import pyotp
+    code = pyotp.TOTP(secret).now()
+    verify = await client.post("/auth/2fa/verify", json={"totp_code": code}, headers=headers)
+    assert verify.status_code == 204
+
+@pytest.mark.asyncio
+async def test_login_requires_2fa_after_setup(client):
+    reg = await client.post("/auth/register", json={
+        "family_name": "2FA Required",
+        "email": "needstotp@example.com",
+        "password": "pass123",
+    })
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    setup = await client.post("/auth/2fa/setup", headers=headers)
+    secret = setup.json()["secret"]
+    import pyotp
+    code = pyotp.TOTP(secret).now()
+    await client.post("/auth/2fa/verify", json={"totp_code": code}, headers=headers)
+
+    no_code = await client.post("/auth/login", json={"email": "needstotp@example.com", "password": "pass123"})
+    assert no_code.status_code == 401
+
+    with_code = await client.post("/auth/login", json={
+        "email": "needstotp@example.com",
+        "password": "pass123",
+        "totp_code": pyotp.TOTP(secret).now(),
+    })
+    assert with_code.status_code == 200
