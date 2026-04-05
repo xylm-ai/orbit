@@ -26,4 +26,4 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     family: Mapped["Family"] = relationship("Family", back_populates="users")
-    entity_access: Mapped[list["FamilyUserAccess"]] = relationship("FamilyUserAccess", back_populates="user")
+    entity_access: Mapped[list["FamilyUserAccess"]] = relationship("FamilyUserAccess", foreign_keys="[FamilyUserAccess.user_id]", back_populates="user")
