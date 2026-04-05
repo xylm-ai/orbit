@@ -20,3 +20,9 @@ export async function apiFetch<T>(
   if (res.status === 204) return undefined as T;
   return res.json();
 }
+
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
+
+export function createPriceFeed(token: string): WebSocket {
+  return new WebSocket(`${WS_BASE}/portfolio/live?token=${encodeURIComponent(token)}`);
+}
