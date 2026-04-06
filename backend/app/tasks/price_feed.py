@@ -33,7 +33,11 @@ async def _run_price_feed() -> tuple[list[str], dict[str, float]]:
     Returns (updated_isins, day_change_map).
     """
     from app.services.projections import rebuild_portfolio, rebuild_entity_allocation
-    from app.services.alerts import check_and_write_alerts, check_price_drop_alerts
+    try:
+        from app.services.alerts import check_and_write_alerts, check_price_drop_alerts
+        _alerts_enabled = True
+    except ImportError:
+        _alerts_enabled = False
 
     async with task_db_session() as db:
         result = await db.execute(
@@ -103,8 +107,9 @@ async def _run_price_feed() -> tuple[list[str], dict[str, float]]:
                 if portfolio:
                     await rebuild_portfolio(portfolio_id, db)
                     await rebuild_entity_allocation(portfolio.entity_id, db)
-                    await check_and_write_alerts(portfolio_id, db)
-                    await check_price_drop_alerts(portfolio_id, day_change_map, db)
+                    if _alerts_enabled:
+                        await check_and_write_alerts(portfolio_id, db)
+                        await check_price_drop_alerts(portfolio_id, day_change_map, db)
 
         await db.commit()
 
