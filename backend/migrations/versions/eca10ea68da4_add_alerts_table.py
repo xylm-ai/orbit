@@ -1,0 +1,48 @@
+"""add alerts table
+
+Revision ID: eca10ea68da4
+Revises: 3e24da44b626
+Create Date: 2026-04-06 11:04:56.560962
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision: str = 'eca10ea68da4'
+down_revision: Union[str, None] = '3e24da44b626'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.create_table('alerts',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('entity_id', sa.UUID(), nullable=False),
+    sa.Column('portfolio_id', sa.UUID(), nullable=True),
+    sa.Column('identifier', sa.String(length=50), nullable=True),
+    sa.Column('alert_type', postgresql.ENUM('price_drop', 'price_drop_critical', 'concentration', 'drawdown', 'reconciliation_flag', name='alerttype'), nullable=False),
+    sa.Column('severity', postgresql.ENUM('warning', 'critical', name='severity'), nullable=False),
+    sa.Column('message', sa.Text(), nullable=False),
+    sa.Column('payload', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('dismissed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['entity_id'], ['entities.id'], ),
+    sa.ForeignKeyConstraint(['portfolio_id'], ['portfolios.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_alerts_created_at'), 'alerts', ['created_at'], unique=False)
+    op.create_index(op.f('ix_alerts_entity_id'), 'alerts', ['entity_id'], unique=False)
+    op.create_index(op.f('ix_alerts_portfolio_id'), 'alerts', ['portfolio_id'], unique=False)
+
+
+def downgrade() -> None:
+    op.drop_index(op.f('ix_alerts_portfolio_id'), table_name='alerts')
+    op.drop_index(op.f('ix_alerts_entity_id'), table_name='alerts')
+    op.drop_index(op.f('ix_alerts_created_at'), table_name='alerts')
+    op.drop_table('alerts')
+    op.execute("DROP TYPE IF EXISTS alerttype")
+    op.execute("DROP TYPE IF EXISTS severity")

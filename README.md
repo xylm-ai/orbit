@@ -58,7 +58,7 @@ PortfolioEvents (append-only)
     → rebuild_entity_allocation → allocation_snapshots (weight % by security, sector)
 ```
 
-A Celery Beat task runs every 15 minutes, fetches NSE prices via yfinance, updates current values in `holdings` and `performance_metrics`, and publishes a `orbit:prices` message to Redis — which the WebSocket endpoint forwards to connected browser clients in real time.
+A Celery Beat task runs every 5 minutes during NSE market hours (09:15–15:30 IST, Mon–Fri), fetches NSE prices via yfinance, updates current values in `holdings` and `performance_metrics`, and publishes a `orbit:prices` message to Redis — which the WebSocket endpoint forwards to connected browser clients in real time. Each price fetch also evaluates threshold alert rules (price drop, concentration, drawdown) and writes new alerts to the `alerts` table with daily deduplication.
 
 ### AI Ingestion Pipeline
 
@@ -85,7 +85,8 @@ The pipeline runs as a Celery chain. Each stage is idempotent and retries indepe
 | AI Extraction | GPT-4o (OpenAI API) · pdfplumber · Tesseract OCR |
 | Email Ingestion | Postmark Inbound |
 | File Storage | S3-compatible object storage |
-| Price Feed | yfinance · NSE tickers (every 15 min via Celery Beat) |
+| Price Feed | yfinance · NSE tickers (every 5 min during market hours via Celery Beat) |
+| Charting | Recharts (Treemap heatmaps, responsive containers) |
 | Auth | JWT · TOTP 2FA (pyotp) · bcrypt |
 
 ---
@@ -198,10 +199,11 @@ POST /extractions/{id}/reject        Reject extraction, no events written
 
 ### Dashboard
 ```
-GET  /dashboard/summary              Net worth, allocation, entity breakdown (with XIRR/CAGR)
-GET  /dashboard/holdings/{type}      Holdings by asset class (pms|equity|mf) with live P&L
-GET  /dashboard/transactions         Unified transaction ledger (paginated)
-GET  /dashboard/alerts               Reconciliation flags + system alerts
+GET  /dashboard/summary                  Net worth, allocation, entity breakdown (with XIRR/CAGR)
+GET  /dashboard/holdings/{type}          Holdings by asset class (pms|equity|mf) with live P&L, sector, day change %
+GET  /dashboard/transactions             Unified transaction ledger (paginated, filterable)
+GET  /dashboard/alerts                   Threshold alerts + reconciliation flags, merged and sorted
+POST /dashboard/alerts/{id}/dismiss      Dismiss a threshold alert (owner/advisor/ca only)
 ```
 
 ### WebSocket
@@ -232,12 +234,12 @@ Access is **entity-scoped** — an advisor granted access to one entity cannot s
 orbit/
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, document, extraction, security, price, holding, performance, allocation)
+│   │   ├── models/          # SQLAlchemy ORM (family, user, entity, portfolio, event, document, extraction, security, price, holding, performance, allocation, alert)
 │   │   ├── routers/         # FastAPI routers (auth, entities, portfolios, documents, extractions, dashboard, ws)
 │   │   ├── schemas/         # Pydantic v2 request/response models
-│   │   ├── services/        # Business logic (auth, event appending, S3 storage, projections, reconciliation)
+│   │   ├── services/        # Business logic (auth, event appending, S3 storage, projections, reconciliation, alerts)
 │   │   ├── tasks/           # Celery pipeline tasks (classify→preprocess→extract→normalize→stage) + price feed
-│   │   ├── worker.py        # Celery app instance + Beat schedule (price feed every 15 min)
+│   │   ├── worker.py        # Celery app instance + Beat schedule (price feed every 5 min, market hours only)
 │   │   ├── config.py        # pydantic-settings environment config
 │   │   ├── database.py      # Async SQLAlchemy engine + session factory
 │   │   ├── deps.py          # FastAPI dependencies (current_user)
@@ -257,8 +259,8 @@ orbit/
 │   │   │   ├── alerts/          # Reconciliation flags + thresholds
 │   │   │   └── documents/       # Upload widget + inbound email + review queue
 │   │   └── login/           # Login page with progressive 2FA reveal
-│   ├── components/          # Sidebar, Topbar
-│   ├── lib/                 # apiFetch wrapper, auth helpers
+│   ├── components/          # Sidebar, Topbar, HoldingTreemap (Recharts), StatStrip
+│   ├── lib/                 # apiFetch wrapper, auth helpers, shared TypeScript types
 │   └── middleware.ts        # Cookie-based auth guard
 ├── docs/
 │   └── superpowers/
@@ -293,8 +295,9 @@ tests/test_projections.py       PASSED  (4 tests — holdings, performance, allo
 tests/test_reconciliation.py    PASSED  (4 tests — match, mismatch flag, tolerance, idempotent)
 tests/test_dashboard.py         PASSED  (6 tests — summary, holdings by type, transactions, alerts, RBAC)
 tests/test_websocket.py         PASSED  (2 tests — connect auth, price message)
+tests/test_alerts.py            PASSED  (5 tests — concentration, dedup, price drop, dismiss endpoint, dismissed excluded)
 
-52 passed
+57 passed
 ```
 
 ---
@@ -305,8 +308,8 @@ tests/test_websocket.py         PASSED  (2 tests — connect auth, price message
 |---|---|---|
 | **Plan 1 — Foundation** | ✅ Complete | Data model, auth, RBAC, event store, dashboard shell |
 | **Plan 2 — AI Ingestion** | ✅ Complete | Document upload, Postmark email, Celery workers, GPT-4o extraction, staging review UI |
-| **Plan 3 — Portfolio Engine** | ✅ Complete | Projection engine (XIRR/CAGR/WAC), yfinance price feed (15 min), WebSocket live prices, bank reconciliation |
-| **Plan 4 — Dashboard** | 🔜 Next | All 7 screens wired to real projections, alerts engine, sector heatmaps |
+| **Plan 3 — Portfolio Engine** | ✅ Complete | Projection engine (XIRR/CAGR/WAC), yfinance price feed (5 min, market hours), WebSocket live prices, bank reconciliation |
+| **Plan 4 — Dashboard** | ✅ Complete | All 7 screens wired to real projections, threshold alerts engine (concentration/drawdown/price drop), sector treemap heatmaps, confidence badges |
 
 ---
 

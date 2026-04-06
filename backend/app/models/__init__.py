@@ -11,6 +11,7 @@ from app.models.price import Price
 from app.models.holding import Holding
 from app.models.performance import PerformanceMetrics
 from app.models.allocation import AllocationSnapshot
+from app.models.alert import Alert, AlertType, Severity
 
 __all__ = [
     "Family", "User", "UserRole",
@@ -21,4 +22,5 @@ __all__ = [
     "Document", "DocumentSource", "DocType", "DocumentStatus",
     "StagedExtraction", "ReviewStatus",
     "Security", "Price", "Holding", "PerformanceMetrics", "AllocationSnapshot",
+    "Alert", "AlertType", "Severity",
 ]

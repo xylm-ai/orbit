@@ -4,9 +4,11 @@ from typing import Annotated
 from pydantic import BaseModel, PlainSerializer
 import uuid
 
-# Serialize Decimal as float in JSON responses
 DecimalAsFloat = Annotated[Decimal, PlainSerializer(float, when_used="json")]
-OptionalDecimalAsFloat = Annotated[Decimal | None, PlainSerializer(lambda v: float(v) if v is not None else None, when_used="json")]
+OptionalDecimalAsFloat = Annotated[
+    Decimal | None,
+    PlainSerializer(lambda v: float(v) if v is not None else None, when_used="json"),
+]
 
 
 class HoldingItem(BaseModel):
@@ -14,6 +16,7 @@ class HoldingItem(BaseModel):
     identifier: str
     security_name: str
     asset_class: str
+    sector: str | None = None
     quantity: DecimalAsFloat
     avg_cost_per_unit: DecimalAsFloat
     total_cost: DecimalAsFloat
@@ -22,6 +25,7 @@ class HoldingItem(BaseModel):
     current_price: OptionalDecimalAsFloat
     current_value: OptionalDecimalAsFloat
     unrealized_pnl: OptionalDecimalAsFloat
+    day_change_pct: OptionalDecimalAsFloat = None
     as_of: datetime
 
     model_config = {"from_attributes": True}
@@ -71,8 +75,14 @@ class PaginatedTransactions(BaseModel):
 
 
 class AlertItem(BaseModel):
-    event_id: uuid.UUID
+    """Unified alert — covers both threshold alerts and reconciliation flags."""
+    id: uuid.UUID
+    source: str          # "threshold" | "reconciliation"
+    alert_type: str
+    severity: str        # "warning" | "critical"
+    message: str
     portfolio_id: uuid.UUID
-    event_date: date
+    identifier: str | None = None
     payload: dict
     created_at: datetime
+    dismissed_at: datetime | None = None

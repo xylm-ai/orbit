@@ -146,5 +146,9 @@ async def test_alerts_returns_reconciliation_flags(client, dashboard_setup):
     resp = await client.get("/dashboard/alerts", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     alerts = resp.json()
-    assert len(alerts) >= 1
-    assert alerts[0]["payload"]["expected_event_type"] == "SecurityBought"
+    recon = [a for a in alerts if a["source"] == "reconciliation"]
+    assert len(recon) >= 1
+    assert recon[0]["alert_type"] == "reconciliation_flag"
+    assert recon[0]["severity"] == "warning"
+    assert "SecurityBought" in recon[0]["message"]
+    assert recon[0]["payload"]["expected_event_type"] == "SecurityBought"

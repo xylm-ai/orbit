@@ -20,9 +20,9 @@ celery_app.conf.update(
     accept_content=["json"],
     task_track_started=True,
     beat_schedule={
-        "fetch-prices-every-15-min": {
+        "fetch-prices-every-5-min": {
             "task": "app.tasks.price_feed.fetch_prices",
-            "schedule": 900.0,  # 15 minutes in seconds
+            "schedule": 300.0,  # 5 minutes in seconds (runs during market hours only)
         },
     },
     timezone="UTC",

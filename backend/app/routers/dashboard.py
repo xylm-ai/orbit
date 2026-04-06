@@ -1,7 +1,8 @@
 import uuid
 from decimal import Decimal
 from typing import Literal
-from fastapi import APIRouter, Depends, Query
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -11,6 +12,9 @@ from app.models import User, UserRole, FamilyUserAccess, Entity, Portfolio, Port
 from app.models.event import PortfolioEvent, EventType
 from app.models.holding import Holding
 from app.models.performance import PerformanceMetrics
+from app.models.price import Price
+from app.models.security import Security
+from app.models.alert import Alert
 from app.schemas.dashboard import (
     SummaryResponse, EntitySummaryItem, PortfolioSummaryItem,
     HoldingItem, PaginatedTransactions, TransactionItem, AlertItem,
@@ -31,6 +35,33 @@ async def _accessible_entity_ids(user: User, db: AsyncSession) -> list[uuid.UUID
             select(FamilyUserAccess.entity_id).where(FamilyUserAccess.user_id == user.id)
         )
     return result.scalars().all()
+
+
+async def _get_day_change_map(identifiers: list[str], db: AsyncSession) -> dict[str, Decimal | None]:
+    if not identifiers:
+        return {}
+    subq = (
+        select(Price.isin, func.max(Price.fetched_at).label("max_fetched"))
+        .where(Price.isin.in_(identifiers))
+        .group_by(Price.isin)
+        .subquery()
+    )
+    result = await db.execute(
+        select(Price.isin, Price.day_change_pct).join(
+            subq,
+            (Price.isin == subq.c.isin) & (Price.fetched_at == subq.c.max_fetched),
+        )
+    )
+    return {row.isin: row.day_change_pct for row in result.all()}
+
+
+async def _get_sector_map(identifiers: list[str], db: AsyncSession) -> dict[str, str | None]:
+    if not identifiers:
+        return {}
+    result = await db.execute(
+        select(Security.isin, Security.sector).where(Security.isin.in_(identifiers))
+    )
+    return {row.isin: row.sector for row in result.all()}
 
 
 @router.get("/summary", response_model=SummaryResponse)
@@ -126,7 +157,21 @@ async def get_holdings(
     result = await db.execute(
         select(Holding).where(Holding.portfolio_id.in_(portfolio_ids))
     )
-    return result.scalars().all()
+    holdings = result.scalars().all()
+    if not holdings:
+        return []
+
+    identifiers = [h.identifier for h in holdings]
+    day_change_map = await _get_day_change_map(identifiers, db)
+    sector_map = await _get_sector_map(identifiers, db)
+
+    items = []
+    for h in holdings:
+        item = HoldingItem.model_validate(h)
+        item.day_change_pct = day_change_map.get(h.identifier)
+        item.sector = sector_map.get(h.identifier)
+        items.append(item)
+    return items
 
 
 @router.get("/transactions", response_model=PaginatedTransactions)
@@ -193,7 +238,19 @@ async def get_alerts(
     )
     portfolio_ids = result.scalars().all()
 
-    result = await db.execute(
+    # Threshold alerts (undismissed)
+    threshold_result = await db.execute(
+        select(Alert)
+        .where(
+            Alert.portfolio_id.in_(portfolio_ids),
+            Alert.dismissed_at.is_(None),
+        )
+        .order_by(Alert.created_at.desc())
+    )
+    threshold_alerts = threshold_result.scalars().all()
+
+    # Reconciliation flags from event store
+    recon_result = await db.execute(
         select(PortfolioEvent)
         .where(
             PortfolioEvent.portfolio_id.in_(portfolio_ids),
@@ -201,15 +258,69 @@ async def get_alerts(
         )
         .order_by(PortfolioEvent.event_date.desc())
     )
-    events = result.scalars().all()
+    recon_events = recon_result.scalars().all()
 
-    return [
-        AlertItem(
-            event_id=e.id,
+    items: list[AlertItem] = []
+
+    for a in threshold_alerts:
+        items.append(AlertItem(
+            id=a.id,
+            source="threshold",
+            alert_type=a.alert_type.value,
+            severity=a.severity.value,
+            message=a.message,
+            portfolio_id=a.portfolio_id,
+            identifier=a.identifier,
+            payload=a.payload,
+            created_at=a.created_at,
+            dismissed_at=a.dismissed_at,
+        ))
+
+    for e in recon_events:
+        p = e.payload
+        message = (
+            f"Reconciliation mismatch: expected {p.get('expected_event_type', 'unknown')} "
+            f"of ₹{p.get('amount', '?')} on {p.get('date', '?')}"
+        )
+        items.append(AlertItem(
+            id=e.id,
+            source="reconciliation",
+            alert_type="reconciliation_flag",
+            severity="warning",
+            message=message,
             portfolio_id=e.portfolio_id,
-            event_date=e.event_date,
+            identifier=None,
             payload=e.payload,
             created_at=e.created_at,
+            dismissed_at=None,
+        ))
+
+    return items
+
+
+@router.post("/alerts/{alert_id}/dismiss", status_code=204)
+async def dismiss_alert(
+    alert_id: uuid.UUID,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.role == UserRole.viewer:
+        raise HTTPException(status_code=403, detail="Viewers cannot dismiss alerts")
+
+    alert = await db.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    # Verify user can access this alert's portfolio
+    entity_ids = await _accessible_entity_ids(user, db)
+    result = await db.execute(
+        select(Portfolio.id).where(
+            Portfolio.id == alert.portfolio_id,
+            Portfolio.entity_id.in_(entity_ids),
         )
-        for e in events
-    ]
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    alert.dismissed_at = datetime.now(timezone.utc)
+    await db.commit()

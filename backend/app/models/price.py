@@ -16,6 +16,7 @@ class Price(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     isin: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     price: Mapped[Decimal] = mapped_column(Numeric(20, 6), nullable=False)
+    day_change_pct: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="yfinance")
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
