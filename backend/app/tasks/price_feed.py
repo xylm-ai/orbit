@@ -1,7 +1,8 @@
 import asyncio
 import json
 from decimal import Decimal
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
+import zoneinfo
 from sqlalchemy import select
 import yfinance as yf
 import redis as sync_redis
@@ -13,6 +14,18 @@ from app.models.holding import Holding
 from app.models.price import Price
 from app.models.portfolio import Portfolio
 from app.config import settings
+
+_IST = zoneinfo.ZoneInfo("Asia/Kolkata")
+_MARKET_OPEN = time(9, 15)
+_MARKET_CLOSE = time(15, 30)
+
+
+def _is_market_open() -> bool:
+    """Return True if NSE is currently open (Mon–Fri, 09:15–15:30 IST)."""
+    now_ist = datetime.now(_IST)
+    if now_ist.weekday() >= 5:  # Saturday=5, Sunday=6
+        return False
+    return _MARKET_OPEN <= now_ist.time() <= _MARKET_CLOSE
 
 
 async def _run_price_feed() -> list[str]:
@@ -74,7 +87,9 @@ async def _run_price_feed() -> list[str]:
 
 @celery_app.task(bind=True)
 def fetch_prices(self):
-    """Celery Beat task: fetch NSE prices every 15 minutes."""
+    """Celery Beat task: fetch NSE prices every 5 minutes during market hours."""
+    if not _is_market_open():
+        return {"skipped": True, "reason": "outside market hours"}
     try:
         updated_isins = asyncio.run(_run_price_feed())
 
