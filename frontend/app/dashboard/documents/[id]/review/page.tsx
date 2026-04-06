@@ -30,6 +30,20 @@ type Extraction = {
 
 const LOW_CONF = 0.7;
 
+function ConfidenceBadge({ score }: { score: number | null | undefined }) {
+  if (score == null) return null;
+  const pct = Math.round(score * 100);
+  const cls =
+    pct >= 85 ? "bg-emerald-900 text-emerald-300" :
+    pct >= 60 ? "bg-amber-900 text-amber-300" :
+                "bg-red-900 text-red-300";
+  return (
+    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${cls}`}>
+      {pct}%
+    </span>
+  );
+}
+
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -248,10 +262,16 @@ export default function ReviewPage() {
                 );
               }
 
+              const confValues = Object.values(row.confidence);
+              const minConf = confValues.length > 0 ? Math.min(...confValues) : null;
+
               return (
                 <tr key={i} className={`${isDup ? "opacity-40" : "hover:bg-slate-800/40"} transition-colors`}>
                   <td className="px-4 py-3 text-xs font-mono text-indigo-300">
-                    {row.event_type}
+                    <div className="flex items-center gap-2">
+                      {row.event_type}
+                      {!isDup && <ConfidenceBadge score={minConf} />}
+                    </div>
                     {isDup && <span className="ml-2 text-[10px] text-slate-500 font-sans">already ingested</span>}
                   </td>
                   <td className="px-4 py-3">{cell("date", row.date)}</td>
